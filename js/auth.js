@@ -12,11 +12,48 @@ class DiscordAuth {
         // Check for stored auth data
         this.loadStoredAuth();
         
-        // Handle OAuth callback if present
+        // Check for OAuth success from callback page
+        this.checkOAuthCallback();
+        
+        // Handle OAuth callback if present (fallback)
         this.handleCallback();
         
         // Load auth URL from backend
         this.loadAuthUrl();
+    }
+
+    checkOAuthCallback() {
+        // Check if we just returned from OAuth callback
+        const oauthSuccess = sessionStorage.getItem('oauth_success');
+        if (oauthSuccess) {
+            try {
+                const authData = JSON.parse(oauthSuccess);
+                console.log('Found OAuth success data from callback');
+                
+                // Clear the temporary storage
+                sessionStorage.removeItem('oauth_success');
+                
+                // Set user data
+                this.accessToken = authData.access_token;
+                this.user = authData.user;
+                
+                // Store permanently
+                this.storeAuth(authData);
+                this.updateUI();
+                
+                this.showToast(`Welcome back, ${this.user.username}!`, 'success');
+                
+                // Clean URL if it has OAuth params
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('code') || urlParams.get('error')) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+                
+            } catch (error) {
+                console.error('Error processing OAuth callback:', error);
+                sessionStorage.removeItem('oauth_success');
+            }
+        }
     }
 
     async loadAuthUrl() {
