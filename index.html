@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Webhook Manager</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/discord-theme.css">
+    <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <img src="assets/discord-logo.png" alt="Discord" class="discord-logo">
+                <h1>Webhook Manager</h1>
+            </div>
+            <div class="user-info" id="userInfo">
+                <button id="loginBtn" class="login-btn">Login with Discord</button>
+                <div id="userProfile" class="user-profile hidden">
+                    <img id="userAvatar" class="user-avatar" alt="User Avatar">
+                    <span id="username"></span>
+                    <button id="logoutBtn" class="logout-btn">Logout</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Login Prompt -->
+        <div id="loginPrompt" class="login-prompt">
+            <div class="login-card">
+                <h2>Welcome to Discord Webhook Manager</h2>
+                <p>Sign in with Discord to manage your webhooks</p>
+                <button id="loginBtnMain" class="login-btn-main">
+                    <img src="assets/discord-logo.png" alt="Discord">
+                    Login with Discord
+                </button>
+            </div>
+        </div>
+
+        <!-- App Content -->
+        <div id="appContent" class="app-content hidden">
+            <div class="container">
+                <!-- Sidebar -->
+                <aside class="sidebar">
+                    <div class="webhook-list">
+                        <div class="section-header">
+                            <h3>Your Webhooks</h3>
+                            <button id="addWebhookBtn" class="add-btn">+</button>
+                        </div>
+                        <div id="webhookList" class="webhook-items"></div>
+                    </div>
+                </aside>
+
+                <!-- Main Editor -->
+                <section class="editor-section">
+                    <div id="webhookEditor" class="webhook-editor hidden">
+                        <!-- Webhook Settings -->
+                        <div class="webhook-settings">
+                            <h3>Webhook Settings</h3>
+                            <div class="settings-grid">
+                                <div class="setting-group">
+                                    <label for="webhookName">Webhook Name</label>
+                                    <input type="text" id="webhookName" placeholder="Enter webhook name" maxlength="80">
+                                </div>
+                                <div class="setting-group">
+                                    <label for="webhookUrl">Webhook URL</label>
+                                    <input type="url" id="webhookUrl" placeholder="https://discord.com/api/webhooks/...">
+                                </div>
+                            </div>
+                            
+                            <!-- Avatar Settings -->
+                            <div class="avatar-settings">
+                                <label>Webhook Avatar</label>
+                                <div class="avatar-controls">
+                                    <div class="avatar-preview">
+                                        <img id="avatarPreview" src="assets/default-avatar.png" alt="Avatar Preview">
+                                    </div>
+                                    <div class="avatar-inputs">
+                                        <input type="file" id="avatarFile" accept="image/*" class="hidden">
+                                        <input type="url" id="avatarUrl" placeholder="Avatar URL (optional)">
+                                        <div class="avatar-buttons">
+                                            <button id="uploadAvatarBtn" class="secondary-btn">Upload Image</button>
+                                            <button id="clearAvatarBtn" class="secondary-btn">Clear</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Message Composer -->
+                        <div class="message-composer">
+                            <h3>Message Content</h3>
+                            <div class="composer-tabs">
+                                <button class="tab-btn active" data-tab="message">Message</button>
+                                <button class="tab-btn" data-tab="embed">Embed</button>
+                            </div>
+                            
+                            <!-- Message Tab -->
+                            <div id="messageTab" class="tab-content active">
+                                <textarea id="messageContent" placeholder="Enter your message here...&#10;&#10;**Bold text**&#10;*Italic text*&#10;__Underlined text__&#10;> Quoted text&#10;[Link text](https://example.com)"></textarea>
+                                <div class="formatting-help">
+                                    <span>**bold** *italic* __underline__ > quote [link](url)</span>
+                                </div>
+                            </div>
+
+                            <!-- Embed Tab -->
+                            <div id="embedTab" class="tab-content">
+                                <div class="embed-builder">
+                                    <div class="embed-section">
+                                        <label for="embedTitle">Title</label>
+                                        <input type="text" id="embedTitle" placeholder="Embed title">
+                                    </div>
+                                    <div class="embed-section">
+                                        <label for="embedDescription">Description</label>
+                                        <textarea id="embedDescription" placeholder="Embed description"></textarea>
+                                    </div>
+                                    <div class="embed-section">
+                                        <label for="embedColor">Color</label>
+                                        <input type="color" id="embedColor" value="#5865F2">
+                                    </div>
+                                    <div class="embed-section">
+                                        <label for="embedUrl">URL</label>
+                                        <input type="url" id="embedUrl" placeholder="https://example.com">
+                                    </div>
+                                    <div class="embed-section">
+                                        <label for="embedImage">Image URL</label>
+                                        <input type="url" id="embedImage" placeholder="https://example.com/image.png">
+                                    </div>
+                                    <div class="embed-section">
+                                        <label for="embedThumbnail">Thumbnail URL</label>
+                                        <input type="url" id="embedThumbnail" placeholder="https://example.com/thumb.png">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="action-buttons">
+                            <button id="saveWebhookBtn" class="primary-btn">Save Webhook</button>
+                            <button id="sendMessageBtn" class="success-btn">Send Message</button>
+                            <button id="deleteWebhookBtn" class="danger-btn">Delete Webhook</button>
+                        </div>
+                    </div>
+
+                    <!-- Welcome Message -->
+                    <div id="welcomeMessage" class="welcome-message">
+                        <h2>Welcome to Webhook Manager</h2>
+                        <p>Select a webhook from the sidebar or create a new one to get started.</p>
+                    </div>
+                </section>
+
+                <!-- Preview Canvas -->
+                <section class="preview-section">
+                    <div class="preview-header">
+                        <h3>Preview</h3>
+                        <div class="preview-controls">
+                            <select id="themeSelect">
+                                <option value="dark">Dark Theme</option>
+                                <option value="light">Light Theme</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="discordPreview" class="discord-preview">
+                        <div class="preview-placeholder">
+                            <p>Your message preview will appear here</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <div id="webhookModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Add New Webhook</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="modalWebhookName">Webhook Name</label>
+                    <input type="text" id="modalWebhookName" placeholder="My Awesome Webhook">
+                </div>
+                <div class="form-group">
+                    <label for="modalWebhookUrl">Webhook URL</label>
+                    <input type="url" id="modalWebhookUrl" placeholder="https://discord.com/api/webhooks/...">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="modalSaveBtn" class="primary-btn">Save</button>
+                <button class="modal-close secondary-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/storage.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/markdown-parser.js"></script>
+    <script src="js/discord-preview.js"></script>
+    <script src="js/webhook-manager.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

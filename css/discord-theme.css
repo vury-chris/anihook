@@ -1,0 +1,248 @@
+/* Discord Message Preview Styling */
+.discord-message {
+    display: flex;
+    padding: 8px 16px;
+    margin: 4px 0;
+    border-radius: 4px;
+    transition: background-color 0.1s ease-out;
+    position: relative;
+}
+
+.discord-message:hover {
+    background-color: rgba(4, 4, 5, 0.07);
+}
+
+.discord-message.light:hover {
+    background-color: rgba(6, 6, 7, 0.02);
+}
+
+.discord-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 16px;
+    flex-shrink: 0;
+    object-fit: cover;
+}
+
+.discord-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.discord-header {
+    display: flex;
+    align-items: baseline;
+    margin-bottom: 2px;
+}
+
+.discord-username {
+    font-weight: 500;
+    color: #ffffff;
+    margin-right: 8px;
+    font-size: 1rem;
+    line-height: 1.375;
+}
+
+.discord-username.light {
+    color: #2e3338;
+}
+
+.discord-timestamp {
+    font-size: 0.75rem;
+    color: #a3a6aa;
+    font-weight: 400;
+    line-height: 1.375;
+}
+
+.discord-timestamp.light {
+    color: #5c5e66;
+}
+
+.discord-message-text {
+    color: #dcddde;
+    font-size: 1rem;
+    line-height: 1.375;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    margin: 0;
+}
+
+.discord-message-text.light {
+    color: #2e3338;
+}
+
+/* Discord Text Formatting */
+.discord-bold {
+    font-weight: 700;
+}
+
+.discord-italic {
+    font-style: italic;
+}
+
+.discord-underline {
+    text-decoration: underline;
+}
+
+.discord-strikethrough {
+    text-decoration: line-through;
+}
+
+.discord-code-inline {
+    background: #2f3136;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: 'Consolas', 'Monaco', 'Menlo', monospace;
+    font-size: 0.875em;
+}
+
+.discord-code-inline.light {
+    background: #f2f3f5;
+}
+
+.discord-quote {
+    border-left: 4px solid #4f545c;
+    padding-left: 12px;
+    margin: 4px 0;
+    display: block;
+}
+
+.discord-quote.light {
+    border-left-color: #c7ccd1;
+}
+
+.discord-link {
+    color: #00aff4;
+    text-decoration: none;
+}
+
+.discord-link:hover {
+    text-decoration: underline;
+}
+
+.discord-link.light {
+    color: #0068e0;
+}
+
+/* Discord Embeds */
+.discord-embed {
+    max-width: 520px;
+    margin: 8px 0;
+    background: #2f3136;
+    border-radius: 4px;
+    border-left: 4px solid #202225;
+    padding: 16px;
+    position: relative;
+}
+
+.discord-embed.light {
+    background: #f2f3f5;
+    border-left-color: #e3e5e8;
+}
+
+.discord-embed-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 8px;
+    line-height: 1.375;
+}
+
+.discord-embed-title.light {
+    color: #060607;
+}
+
+.discord-embed-title a {
+    color: #00aff4;
+    text-decoration: none;
+}
+
+.discord-embed-title a:hover {
+    text-decoration: underline;
+}
+
+.discord-embed-title.light a {
+    color: #0068e0;
+}
+
+.discord-embed-description {
+    color: #dcddde;
+    font-size: 0.875rem;
+    line-height: 1.125;
+    margin-bottom: 8px;
+    white-space: pre-wrap;
+}
+
+.discord-embed-description.light {
+    color: #2e3338;
+}
+
+.discord-embed-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    margin-top: 16px;
+}
+
+.discord-embed-thumbnail {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 4px;
+    position: absolute;
+    top: 16px;
+    right: 16px;
+}
+
+/* Theme Variants */
+.discord-preview.light {
+    background: #ffffff;
+    color: #2e3338;
+}
+
+.discord-preview.light .discord-message:hover {
+    background-color: rgba(6, 6, 7, 0.02);
+}
+
+/* Scrollbar Styling */
+.discord-preview::-webkit-scrollbar {
+    width: 8px;
+}
+
+.discord-preview::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.discord-preview::-webkit-scrollbar-thumb {
+    background: #202225;
+    border-radius: 4px;
+}
+
+.discord-preview::-webkit-scrollbar-thumb:hover {
+    background: #2f3136;
+}
+
+.discord-preview.light::-webkit-scrollbar-thumb {
+    background: #d1d9de;
+}
+
+.discord-preview.light::-webkit-scrollbar-thumb:hover {
+    background: #c7ccd1;
+}
+
+/* Animation for new messages */
+.discord-message.new-message {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
