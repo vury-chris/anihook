@@ -1,5 +1,3 @@
-// Vercel serverless function - api/auth.js
-// Handles Discord OAuth securely without exposing Client ID/Secret
 
 export default async function handler(req, res) {
     // Handle CORS preflight

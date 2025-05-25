@@ -71,6 +71,12 @@ class WebhookManager {
             addBtn.addEventListener('click', () => this.showAddModal());
         }
 
+        // Test webhook button
+        const testBtn = document.getElementById('testWebhookBtn');
+        if (testBtn) {
+            testBtn.addEventListener('click', () => this.testWebhookConnection());
+        }
+
         // Form input listeners for real-time updates
         const inputs = ['webhookName', 'webhookUrl', 'avatarUrl'];
         inputs.forEach(id => {
@@ -369,6 +375,7 @@ class WebhookManager {
         }
     }
 
+    // FIXED: Send message via proxy to avoid CORS
     async sendMessage() {
         if (!this.currentWebhook || !this.currentWebhook.url) {
             this.showToast('Please save the webhook first', 'error');
@@ -384,26 +391,90 @@ class WebhookManager {
         }
 
         try {
+            // Show loading state
+            const sendBtn = document.getElementById('sendMessageBtn');
+            const originalText = sendBtn?.textContent;
+            if (sendBtn) {
+                sendBtn.disabled = true;
+                sendBtn.textContent = 'Sending...';
+            }
+
             const payload = this.buildWebhookPayload(messageContent, embedData);
             
-            const response = await fetch(this.currentWebhook.url, {
+            console.log('Sending webhook payload via proxy:', payload);
+
+            // Send via our proxy API instead of directly to Discord
+            const response = await fetch('/api/webhook', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({
+                    webhookUrl: this.currentWebhook.url,
+                    payload: payload
+                })
             });
 
             if (response.ok) {
                 this.showToast('Message sent successfully!', 'success');
                 this.clearMessageForm();
             } else {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `HTTP ${response.status}`);
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP ${response.status}`);
             }
+
         } catch (error) {
             console.error('Error sending message:', error);
-            this.showToast('Failed to send message: ' + error.message, 'error');
+            this.showToast(`Failed to send message: ${error.message}`, 'error');
+        } finally {
+            // Restore button state
+            const sendBtn = document.getElementById('sendMessageBtn');
+            if (sendBtn) {
+                sendBtn.disabled = false;
+                sendBtn.textContent = originalText || 'Send Message';
+            }
+        }
+    }
+
+    // FIXED: Test connection via proxy
+    async testWebhookConnection() {
+        if (!this.currentWebhook?.url) {
+            this.showToast('No webhook URL to test', 'error');
+            return;
+        }
+        
+        try {
+            this.showToast('Testing webhook connection...', 'info');
+            
+            // Test with a simple payload
+            const testPayload = {
+                content: "🔧 Webhook test - connection successful!",
+                username: this.currentWebhook.name || "Webhook Test"
+            };
+
+            const response = await fetch('/api/webhook', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    webhookUrl: this.currentWebhook.url,
+                    payload: testPayload
+                })
+            });
+
+            if (response.ok) {
+                this.showToast('Webhook connection successful!', 'success');
+                return true;
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.error);
+            }
+            
+        } catch (error) {
+            console.error('Webhook test failed:', error);
+            this.showToast(`Connection test failed: ${error.message}`, 'error');
+            return false;
         }
     }
 
@@ -617,7 +688,20 @@ class WebhookManager {
     isValidWebhookUrl(url) {
         try {
             const urlObj = new URL(url);
-            return urlObj.hostname === 'discord.com' || urlObj.hostname === 'discordapp.com';
+            
+            // Check if it's a Discord webhook URL
+            const validHosts = ['discord.com', 'discordapp.com'];
+            if (!validHosts.includes(urlObj.hostname)) {
+                return false;
+            }
+            
+            // Check if it matches Discord webhook URL pattern
+            const webhookPattern = /\/api\/webhooks\/\d+\/[\w-]+/;
+            if (!webhookPattern.test(urlObj.pathname)) {
+                return false;
+            }
+            
+            return true;
         } catch {
             return false;
         }
