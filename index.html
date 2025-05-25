@@ -44,7 +44,7 @@
         <!-- App Content -->
         <div id="appContent" class="app-content hidden">
             <div class="container">
-                <!-- Sidebar -->
+                <!-- Sidebar - Discord Member List Style -->
                 <aside class="sidebar">
                     <div class="webhook-list">
                         <div class="section-header">
@@ -60,11 +60,11 @@
                     <div id="webhookEditor" class="webhook-editor hidden">
                         <!-- Webhook Settings -->
                         <div class="webhook-settings">
-                            <h3>Webhook Settings</h3>
+                            <h3>Webhook Configuration</h3>
                             <div class="settings-grid">
                                 <div class="setting-group">
-                                    <label for="webhookName">Webhook Name</label>
-                                    <input type="text" id="webhookName" placeholder="Enter webhook name" maxlength="80">
+                                    <label for="webhookName">Display Name</label>
+                                    <input type="text" id="webhookName" placeholder="Enter webhook display name" maxlength="80">
                                 </div>
                                 <div class="setting-group">
                                     <label for="webhookUrl">Webhook URL</label>
@@ -97,43 +97,109 @@
                             <div class="composer-tabs">
                                 <button class="tab-btn active" data-tab="message">Message</button>
                                 <button class="tab-btn" data-tab="embed">Embed</button>
+                                <button class="tab-btn" data-tab="components">Components</button>
                             </div>
                             
                             <!-- Message Tab -->
                             <div id="messageTab" class="tab-content active">
-                                <textarea id="messageContent" placeholder="Enter your message here...&#10;&#10;**Bold text**&#10;*Italic text*&#10;__Underlined text__&#10;> Quoted text&#10;[Link text](https://example.com)"></textarea>
+                                <textarea id="messageContent" placeholder="Type your message here...&#10;&#10;**Bold text** *Italic text* __Underlined text__&#10;~~Strikethrough~~ `inline code`&#10;> Quoted text&#10;||Spoiler text||&#10;[Link text](https://example.com)"></textarea>
                                 <div class="formatting-help">
-                                    <span>**bold** *italic* __underline__ > quote [link](url)</span>
+                                    <span>**bold** *italic* __underline__ ~~strikethrough~~ `code` > quote ||spoiler|| [link](url)</span>
                                 </div>
                             </div>
 
-                            <!-- Embed Tab -->
+                            <!-- Enhanced Embed Tab -->
                             <div id="embedTab" class="tab-content">
                                 <div class="embed-builder">
-                                    <div class="embed-section">
-                                        <label for="embedTitle">Title</label>
-                                        <input type="text" id="embedTitle" placeholder="Embed title">
+                                    <!-- Basic Embed Info -->
+                                    <div class="embed-section-group">
+                                        <h4>Basic Information</h4>
+                                        <div class="embed-section">
+                                            <label for="embedTitle">Title</label>
+                                            <input type="text" id="embedTitle" placeholder="Embed title" maxlength="256">
+                                        </div>
+                                        <div class="embed-section">
+                                            <label for="embedDescription">Description</label>
+                                            <textarea id="embedDescription" placeholder="Embed description" maxlength="4096"></textarea>
+                                        </div>
+                                        <div class="embed-section">
+                                            <label for="embedUrl">URL</label>
+                                            <input type="url" id="embedUrl" placeholder="https://example.com">
+                                        </div>
+                                        <div class="embed-section">
+                                            <label for="embedColor">Color</label>
+                                            <input type="color" id="embedColor" value="#5865F2">
+                                        </div>
                                     </div>
-                                    <div class="embed-section">
-                                        <label for="embedDescription">Description</label>
-                                        <textarea id="embedDescription" placeholder="Embed description"></textarea>
+
+                                    <!-- Author Section -->
+                                    <div class="embed-section-group">
+                                        <h4>Author</h4>
+                                        <div class="embed-section">
+                                            <label for="embedAuthorName">Author Name</label>
+                                            <input type="text" id="embedAuthorName" placeholder="Author name" maxlength="256">
+                                        </div>
+                                        <div class="embed-section">
+                                            <label for="embedAuthorUrl">Author URL</label>
+                                            <input type="url" id="embedAuthorUrl" placeholder="https://example.com">
+                                        </div>
+                                        <div class="embed-section">
+                                            <label for="embedAuthorIcon">Author Icon URL</label>
+                                            <input type="url" id="embedAuthorIcon" placeholder="https://example.com/icon.png">
+                                        </div>
                                     </div>
-                                    <div class="embed-section">
-                                        <label for="embedColor">Color</label>
-                                        <input type="color" id="embedColor" value="#5865F2">
+
+                                    <!-- Images -->
+                                    <div class="embed-section-group">
+                                        <h4>Images</h4>
+                                        <div class="embed-section">
+                                            <label for="embedImage">Image URL</label>
+                                            <input type="url" id="embedImage" placeholder="https://example.com/image.png">
+                                        </div>
+                                        <div class="embed-section">
+                                            <label for="embedThumbnail">Thumbnail URL</label>
+                                            <input type="url" id="embedThumbnail" placeholder="https://example.com/thumb.png">
+                                        </div>
                                     </div>
-                                    <div class="embed-section">
-                                        <label for="embedUrl">URL</label>
-                                        <input type="url" id="embedUrl" placeholder="https://example.com">
+
+                                    <!-- Footer -->
+                                    <div class="embed-section-group">
+                                        <h4>Footer</h4>
+                                        <div class="embed-section">
+                                            <label for="embedFooterText">Footer Text</label>
+                                            <input type="text" id="embedFooterText" placeholder="Footer text" maxlength="2048">
+                                        </div>
+                                        <div class="embed-section">
+                                            <label for="embedFooterIcon">Footer Icon URL</label>
+                                            <input type="url" id="embedFooterIcon" placeholder="https://example.com/icon.png">
+                                        </div>
+                                        <div class="embed-section">
+                                            <label for="embedTimestamp">
+                                                <input type="checkbox" id="embedTimestamp" style="margin-right: 8px;">
+                                                Include Current Timestamp
+                                            </label>
+                                        </div>
                                     </div>
-                                    <div class="embed-section">
-                                        <label for="embedImage">Image URL</label>
-                                        <input type="url" id="embedImage" placeholder="https://example.com/image.png">
+
+                                    <!-- Fields -->
+                                    <div class="embed-section-group">
+                                        <h4>Fields</h4>
+                                        <div class="embed-fields" id="embedFields">
+                                            <!-- Dynamic fields will be added here -->
+                                        </div>
+                                        <button type="button" id="addFieldBtn" class="add-field-btn">+ Add Field</button>
                                     </div>
-                                    <div class="embed-section">
-                                        <label for="embedThumbnail">Thumbnail URL</label>
-                                        <input type="url" id="embedThumbnail" placeholder="https://example.com/thumb.png">
+                                </div>
+                            </div>
+
+                            <!-- Components Tab -->
+                            <div id="componentsTab" class="tab-content">
+                                <div class="button-attachment">
+                                    <h4>Message Buttons</h4>
+                                    <div id="messageButtons">
+                                        <!-- Dynamic buttons will be added here -->
                                     </div>
+                                    <button type="button" id="addButtonBtn" class="add-field-btn">+ Add Button</button>
                                 </div>
                             </div>
                         </div>
@@ -141,6 +207,7 @@
                         <!-- Action Buttons -->
                         <div class="action-buttons">
                             <button id="saveWebhookBtn" class="primary-btn">Save Webhook</button>
+                            <button id="testWebhookBtn" class="secondary-btn">Test Connection</button>
                             <button id="sendMessageBtn" class="success-btn">Send Message</button>
                             <button id="deleteWebhookBtn" class="danger-btn">Delete Webhook</button>
                         </div>
@@ -156,7 +223,7 @@
                 <!-- Preview Canvas -->
                 <section class="preview-section">
                     <div class="preview-header">
-                        <h3>Preview</h3>
+                        <h3>Live Preview</h3>
                         <div class="preview-controls">
                             <select id="themeSelect">
                                 <option value="dark">Dark Theme</option>
