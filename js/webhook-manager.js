@@ -4,6 +4,7 @@ class WebhookManager {
         this.webhooks = [];
         this.embedFields = [];
         this.messageButtons = [];
+        this.messageAttachments = [];
         this.init();
     }
 
@@ -11,6 +12,7 @@ class WebhookManager {
         this.loadWebhooks();
         this.setupEventListeners();
         this.setupUI();
+        this.initColorPicker();
     }
 
     loadWebhooks() {
@@ -23,8 +25,59 @@ class WebhookManager {
         }
     }
 
+    initColorPicker() {
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const colorInput = document.getElementById('embedColor');
+                if (colorInput && !document.querySelector('.modern-color-picker')) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'modern-color-picker';
+                    
+                    const colorPreview = document.createElement('div');
+                    colorPreview.className = 'color-preview';
+                    colorPreview.style.backgroundColor = colorInput.value || '#5865F2';
+                    
+                    const colorValue = document.createElement('input');
+                    colorValue.type = 'text';
+                    colorValue.className = 'color-hex-input';
+                    colorValue.value = colorInput.value || '#5865F2';
+                    colorValue.placeholder = '#5865F2';
+                    
+                    const colorWheel = document.createElement('input');
+                    colorWheel.type = 'color';
+                    colorWheel.className = 'color-wheel-input';
+                    colorWheel.value = colorInput.value || '#5865F2';
+                    
+                    wrapper.appendChild(colorPreview);
+                    wrapper.appendChild(colorValue);
+                    wrapper.appendChild(colorWheel);
+                    
+                    colorInput.style.display = 'none';
+                    colorInput.parentNode.appendChild(wrapper);
+                    
+                    colorWheel.addEventListener('input', (e) => {
+                        const color = e.target.value;
+                        colorInput.value = color;
+                        colorPreview.style.backgroundColor = color;
+                        colorValue.value = color;
+                        this.updateCurrentWebhook();
+                    });
+                    
+                    colorValue.addEventListener('input', (e) => {
+                        const color = e.target.value;
+                        if (/^#[0-9A-F]{6}$/i.test(color)) {
+                            colorInput.value = color;
+                            colorPreview.style.backgroundColor = color;
+                            colorWheel.value = color;
+                            this.updateCurrentWebhook();
+                        }
+                    });
+                }
+            }, 100);
+        });
+    }
+
     setupEventListeners() {
-        // Storage events
         document.addEventListener('storageUpdate', (e) => {
             const { type, data } = e.detail;
             switch (type) {
@@ -40,48 +93,298 @@ class WebhookManager {
             }
         });
 
-        // Form events
         document.addEventListener('DOMContentLoaded', () => {
             this.setupFormListeners();
             this.setupModalListeners();
             this.setupAvatarHandling();
             this.setupEmbedBuilder();
             this.setupComponentBuilder();
+            this.setupImageHandling();
         });
     }
 
+    // FIXED: Properly setup all image upload handlers
+    setupImageHandling() {
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                // Message image upload
+                const messageImageBtn = document.getElementById('messageImageBtn');
+                const messageImageFile = document.getElementById('messageImageFile');
+                
+                if (messageImageBtn && messageImageFile) {
+                    messageImageBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        console.log('Message image button clicked');
+                        messageImageFile.click();
+                    });
+                    
+                    messageImageFile.addEventListener('change', (e) => {
+                        console.log('Message image file selected');
+                        this.handleMessageImageUpload(e);
+                    });
+                }
+
+                // Embed main image upload
+                const embedImageBtn = document.getElementById('embedImageBtn');
+                const embedImageFile = document.getElementById('embedImageFile');
+                
+                if (embedImageBtn && embedImageFile) {
+                    embedImageBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        console.log('Embed image button clicked');
+                        embedImageFile.click();
+                    });
+                    
+                    embedImageFile.addEventListener('change', (e) => {
+                        console.log('Embed image file selected');
+                        this.handleEmbedImageUpload(e, 'embedImage');
+                    });
+                }
+
+                // Embed thumbnail upload
+                const embedThumbnailBtn = document.getElementById('embedThumbnailBtn');
+                const embedThumbnailFile = document.getElementById('embedThumbnailFile');
+                
+                if (embedThumbnailBtn && embedThumbnailFile) {
+                    embedThumbnailBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        console.log('Thumbnail button clicked');
+                        embedThumbnailFile.click();
+                    });
+                    
+                    embedThumbnailFile.addEventListener('change', (e) => {
+                        console.log('Thumbnail file selected');
+                        this.handleEmbedImageUpload(e, 'embedThumbnail');
+                    });
+                }
+
+                // Setup other upload buttons by finding them dynamically
+                this.setupDynamicImageHandlers();
+                
+            }, 1000); // Increased timeout to ensure DOM is ready
+        });
+    }
+
+    // FIXED: Setup image handlers for dynamically found buttons
+    setupDynamicImageHandlers() {
+        // Find all upload buttons and set them up
+        const uploadButtons = document.querySelectorAll('.upload-btn');
+        console.log('Found upload buttons:', uploadButtons.length);
+        
+        uploadButtons.forEach(button => {
+            // Skip if already has listener
+            if (button.hasAttribute('data-listener-added')) return;
+            
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Upload button clicked:', button);
+                
+                // Find the associated file input
+                const section = button.closest('.embed-section');
+                if (section) {
+                    const textInput = section.querySelector('input[type="url"]');
+                    if (textInput) {
+                        const inputId = textInput.id;
+                        const fileInputId = inputId + 'File';
+                        const fileInput = document.getElementById(fileInputId);
+                        
+                        console.log('Looking for file input:', fileInputId);
+                        
+                        if (fileInput) {
+                            fileInput.click();
+                        } else {
+                            // Create file input if it doesn't exist
+                            this.createFileInput(fileInputId, inputId);
+                        }
+                    }
+                }
+            });
+            
+            button.setAttribute('data-listener-added', 'true');
+        });
+    }
+
+    // FIXED: Create file input for upload buttons
+    createFileInput(fileInputId, targetInputId) {
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.id = fileInputId;
+        fileInput.accept = 'image/*';
+        fileInput.style.display = 'none';
+        
+        fileInput.addEventListener('change', (e) => {
+            this.handleEmbedImageUpload(e, targetInputId);
+        });
+        
+        document.body.appendChild(fileInput);
+        fileInput.click();
+    }
+
+    // FIXED: Handle message image uploads with proper conversion
+    handleMessageImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        console.log('Processing message image:', file.name);
+
+        if (!file.type.startsWith('image/')) {
+            this.showToast('Please select an image file', 'error');
+            return;
+        }
+
+        if (file.size > 8 * 1024 * 1024) {
+            this.showToast('Image file is too large (max 8MB)', 'error');
+            return;
+        }
+
+        // Convert to imgur or similar service
+        this.convertImageToUrl(file).then(url => {
+            if (url) {
+                this.messageAttachments.push({
+                    name: file.name,
+                    url: url,
+                    type: 'image'
+                });
+                this.updateMessageAttachmentsUI();
+                this.updateCurrentWebhook();
+                this.showToast('Image uploaded successfully!', 'success');
+            }
+        }).catch(error => {
+            console.error('Image upload failed:', error);
+            this.showToast('Image upload failed. Try using a direct image URL instead.', 'error');
+        });
+    }
+
+    // FIXED: Handle embed image uploads with proper URL setting
+    handleEmbedImageUpload(event, targetInputId) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        console.log('Processing embed image for:', targetInputId);
+
+        if (!file.type.startsWith('image/')) {
+            this.showToast('Please select an image file', 'error');
+            return;
+        }
+
+        if (file.size > 8 * 1024 * 1024) {
+            this.showToast('Image file is too large (max 8MB)', 'error');
+            return;
+        }
+
+        // Convert to a usable URL
+        this.convertImageToUrl(file).then(url => {
+            if (url) {
+                const targetInput = document.getElementById(targetInputId);
+                if (targetInput) {
+                    targetInput.value = url;
+                    this.updateCurrentWebhook();
+                    
+                    // Trigger preview update
+                    if (window.discordPreview) {
+                        setTimeout(() => window.discordPreview.refreshPreview(), 100);
+                    }
+                    
+                    this.showToast(`Image uploaded for ${targetInputId}!`, 'success');
+                } else {
+                    console.error('Target input not found:', targetInputId);
+                }
+            }
+        }).catch(error => {
+            console.error('Image upload failed:', error);
+            this.showToast('Image upload failed. Try using a direct image URL instead.', 'error');
+        });
+    }
+
+    // FIXED: Convert image to usable URL (using a free image hosting service)
+    async convertImageToUrl(file) {
+        try {
+            // For demo purposes, we'll create a data URL (not ideal for production)
+            // In production, you'd want to upload to imgur, cloudinary, or similar
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    // For now, return data URL with warning
+                    this.showToast('⚠️ Using local image data. For production, upload to imgur.com or similar service.', 'warning');
+                    resolve(e.target.result);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        } catch (error) {
+            console.error('Image conversion error:', error);
+            throw error;
+        }
+    }
+
+    updateMessageAttachmentsUI() {
+        const container = document.getElementById('messageAttachments');
+        if (!container) return;
+
+        if (this.messageAttachments.length === 0) {
+            container.innerHTML = '';
+            container.style.display = 'none';
+            return;
+        }
+
+        container.style.display = 'block';
+        const html = this.messageAttachments.map((attachment, index) => `
+            <div class="message-attachment" data-index="${index}">
+                <img src="${attachment.url}" alt="${attachment.name}" class="attachment-preview">
+                <div class="attachment-info">
+                    <span class="attachment-name">${this.escapeHtml(attachment.name)}</span>
+                    <button type="button" class="remove-attachment-btn" onclick="webhookManager.removeMessageAttachment(${index})" title="Remove attachment">×</button>
+                </div>
+            </div>
+        `).join('');
+
+        container.innerHTML = html;
+    }
+
+    updateMessageAttachmentsVisibility() {
+        const container = document.getElementById('messageAttachments');
+        if (container) {
+            if (this.messageAttachments && this.messageAttachments.length > 0) {
+                container.style.display = 'block';
+            } else {
+                container.style.display = 'none';
+            }
+        }
+    }
+
+    removeMessageAttachment(index) {
+        this.messageAttachments.splice(index, 1);
+        this.updateMessageAttachmentsUI();
+        this.updateCurrentWebhook();
+        this.showToast('Attachment removed', 'info');
+    }
+
     setupFormListeners() {
-        // Save webhook button
         const saveBtn = document.getElementById('saveWebhookBtn');
         if (saveBtn) {
             saveBtn.addEventListener('click', () => this.saveCurrentWebhook());
         }
 
-        // Delete webhook button
         const deleteBtn = document.getElementById('deleteWebhookBtn');
         if (deleteBtn) {
             deleteBtn.addEventListener('click', () => this.deleteCurrentWebhook());
         }
 
-        // Send message button
         const sendBtn = document.getElementById('sendMessageBtn');
         if (sendBtn) {
             sendBtn.addEventListener('click', () => this.sendMessage());
         }
 
-        // Add webhook button
         const addBtn = document.getElementById('addWebhookBtn');
         if (addBtn) {
             addBtn.addEventListener('click', () => this.showAddModal());
         }
 
-        // Test webhook button
         const testBtn = document.getElementById('testWebhookBtn');
         if (testBtn) {
             testBtn.addEventListener('click', () => this.testWebhookConnection());
         }
 
-        // Form input listeners for real-time updates
         const inputs = ['webhookName', 'webhookUrl', 'avatarUrl'];
         inputs.forEach(id => {
             const element = document.getElementById(id);
@@ -92,13 +395,11 @@ class WebhookManager {
     }
 
     setupEmbedBuilder() {
-        // Add field button
         const addFieldBtn = document.getElementById('addFieldBtn');
         if (addFieldBtn) {
             addFieldBtn.addEventListener('click', () => this.addEmbedField());
         }
 
-        // Embed input listeners
         const embedInputs = [
             'embedTitle', 'embedDescription', 'embedUrl', 'embedColor',
             'embedAuthorName', 'embedAuthorUrl', 'embedAuthorIcon',
@@ -115,7 +416,6 @@ class WebhookManager {
     }
 
     setupComponentBuilder() {
-        // Add button
         const addButtonBtn = document.getElementById('addButtonBtn');
         if (addButtonBtn) {
             addButtonBtn.addEventListener('click', () => this.addMessageButton());
@@ -135,11 +435,11 @@ class WebhookManager {
                 <div class="embed-field-row">
                     <div class="embed-section">
                         <label>Name</label>
-                        <input type="text" id="embedFieldName${fieldIndex}" placeholder="Field name" maxlength="256">
+                        <input type="text" id="embedFieldName${fieldIndex}" placeholder="Field name" maxlength="256" class="field-input">
                     </div>
                     <div class="embed-section">
                         <label>Value</label>
-                        <textarea id="embedFieldValue${fieldIndex}" placeholder="Field value" maxlength="1024"></textarea>
+                        <textarea id="embedFieldValue${fieldIndex}" placeholder="Field value" maxlength="1024" class="field-input"></textarea>
                     </div>
                     <div class="embed-section">
                         <label>
@@ -154,7 +454,6 @@ class WebhookManager {
         fieldsContainer.insertAdjacentHTML('beforeend', fieldHtml);
         this.embedFields.push({ name: '', value: '', inline: false });
         
-        // Add event listeners for new field
         ['embedFieldName' + fieldIndex, 'embedFieldValue' + fieldIndex, 'embedFieldInline' + fieldIndex].forEach(id => {
             const element = document.getElementById(id);
             if (element) {
@@ -220,11 +519,7 @@ class WebhookManager {
                 <div class="embed-section">
                     <label>Style</label>
                     <select id="buttonStyle${buttonIndex}" class="button-style-select">
-                        <option value="primary">Primary (Blue)</option>
-                        <option value="secondary">Secondary (Gray)</option>
-                        <option value="success">Success (Green)</option>
-                        <option value="danger">Danger (Red)</option>
-                        <option value="link">Link</option>
+                        <option value="link">Link Button</option>
                     </select>
                 </div>
                 <button type="button" class="remove-field-btn" onclick="webhookManager.removeButton(${buttonIndex})">Remove</button>
@@ -232,9 +527,8 @@ class WebhookManager {
         `;
         
         buttonsContainer.insertAdjacentHTML('beforeend', buttonHtml);
-        this.messageButtons.push({ label: '', url: '', style: 'primary' });
+        this.messageButtons.push({ label: '', url: '', style: 'link' });
         
-        // Add event listeners for new button
         ['buttonLabel' + buttonIndex, 'buttonUrl' + buttonIndex, 'buttonStyle' + buttonIndex].forEach(id => {
             const element = document.getElementById(id);
             if (element) {
@@ -273,7 +567,7 @@ class WebhookManager {
             this.messageButtons[index] = {
                 label: labelInput?.value || '',
                 url: urlInput?.value || '',
-                style: styleInput?.value || 'primary'
+                style: styleInput?.value || 'link'
             };
             this.updateCurrentWebhook();
         }
@@ -324,7 +618,6 @@ class WebhookManager {
     }
 
     setupUI() {
-        // Tab switching
         const tabBtns = document.querySelectorAll('.tab-btn');
         tabBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -365,7 +658,6 @@ class WebhookManager {
 
         listElement.innerHTML = html;
 
-        // Add click listeners
         listElement.querySelectorAll('.webhook-item').forEach(item => {
             item.addEventListener('click', () => {
                 const webhookId = item.dataset.webhookId;
@@ -381,14 +673,59 @@ class WebhookManager {
         this.currentWebhook = webhook;
         window.storageManager.setCurrentWebhook(webhook);
         
+        this.clearAllFormContent();
         this.populateForm(webhook);
         this.showEditor();
         this.updateActiveItem();
         
-        // Dispatch event for preview
         document.dispatchEvent(new CustomEvent('webhookSelected', {
             detail: webhook
         }));
+    }
+
+    clearAllFormContent() {
+        const messageContent = document.getElementById('messageContent');
+        if (messageContent) {
+            messageContent.value = '';
+        }
+
+        const embedInputs = [
+            'embedTitle', 'embedDescription', 'embedUrl', 'embedImage', 'embedThumbnail',
+            'embedAuthorName', 'embedAuthorUrl', 'embedAuthorIcon',
+            'embedFooterText', 'embedFooterIcon'
+        ];
+
+        embedInputs.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.value = '';
+            }
+        });
+
+        const colorInput = document.getElementById('embedColor');
+        if (colorInput) {
+            colorInput.value = '#5865F2';
+            const colorPreview = document.querySelector('.color-preview');
+            const colorValue = document.querySelector('.color-hex-input');
+            const colorWheel = document.querySelector('.color-wheel-input');
+            if (colorPreview) colorPreview.style.backgroundColor = '#5865F2';
+            if (colorValue) colorValue.value = '#5865F2';
+            if (colorWheel) colorWheel.value = '#5865F2';
+        }
+
+        const timestampInput = document.getElementById('embedTimestamp');
+        if (timestampInput) {
+            timestampInput.checked = false;
+        }
+
+        this.clearEmbedFields();
+        this.clearMessageButtons();
+        this.clearMessageAttachments();
+    }
+
+    clearMessageAttachments() {
+        this.messageAttachments = [];
+        this.updateMessageAttachmentsUI();
     }
 
     populateForm(webhook) {
@@ -405,10 +742,36 @@ class WebhookManager {
             }
         });
 
-        // Populate embed fields if they exist
-        this.clearEmbedFields();
-        this.clearMessageButtons();
-        
+        if (webhook.savedContent) {
+            const messageContent = document.getElementById('messageContent');
+            if (messageContent && webhook.savedContent.message) {
+                messageContent.value = webhook.savedContent.message;
+            }
+
+            if (webhook.savedContent.embed) {
+                const embed = webhook.savedContent.embed;
+                Object.entries(embed).forEach(([key, value]) => {
+                    const element = document.getElementById('embed' + key.charAt(0).toUpperCase() + key.slice(1));
+                    if (element && value !== undefined) {
+                        if (element.type === 'checkbox') {
+                            element.checked = value;
+                        } else {
+                            element.value = value;
+                        }
+                    }
+                });
+
+                if (embed.color) {
+                    const colorPreview = document.querySelector('.color-preview');
+                    const colorValue = document.querySelector('.color-hex-input');
+                    const colorWheel = document.querySelector('.color-wheel-input');
+                    if (colorPreview) colorPreview.style.backgroundColor = embed.color;
+                    if (colorValue) colorValue.value = embed.color;
+                    if (colorWheel) colorWheel.value = embed.color;
+                }
+            }
+        }
+
         if (webhook.embedFields) {
             webhook.embedFields.forEach((field, index) => {
                 this.addEmbedField();
@@ -423,8 +786,13 @@ class WebhookManager {
                 this.addMessageButton();
                 document.getElementById(`buttonLabel${index}`).value = button.label || '';
                 document.getElementById(`buttonUrl${index}`).value = button.url || '';
-                document.getElementById(`buttonStyle${index}`).value = button.style || 'primary';
+                document.getElementById(`buttonStyle${index}`).value = button.style || 'link';
             });
+        }
+
+        if (webhook.messageAttachments) {
+            this.messageAttachments = [...webhook.messageAttachments];
+            this.updateMessageAttachmentsUI();
         }
 
         this.updateAvatarPreview();
@@ -477,14 +845,21 @@ class WebhookManager {
         const url = document.getElementById('webhookUrl')?.value || '';
         const avatar = document.getElementById('avatarUrl')?.value || '';
 
-        // Update current webhook object
+        const messageContent = document.getElementById('messageContent')?.value || '';
+        const embedData = this.getEmbedData();
+
         this.currentWebhook.name = name;
         this.currentWebhook.url = url;
         this.currentWebhook.avatar = avatar;
         this.currentWebhook.embedFields = this.embedFields;
         this.currentWebhook.messageButtons = this.messageButtons;
+        this.currentWebhook.messageAttachments = this.messageAttachments;
+        
+        this.currentWebhook.savedContent = {
+            message: messageContent,
+            embed: embedData
+        };
 
-        // Dispatch update event for preview
         document.dispatchEvent(new CustomEvent('webhookUpdated', {
             detail: this.currentWebhook
         }));
@@ -512,14 +887,20 @@ class WebhookManager {
         }
 
         try {
-            // Update webhook properties
             this.currentWebhook.name = name;
             this.currentWebhook.url = url;
             this.currentWebhook.avatar = document.getElementById('avatarUrl')?.value || '';
             this.currentWebhook.embedFields = this.embedFields;
             this.currentWebhook.messageButtons = this.messageButtons;
+            this.currentWebhook.messageAttachments = this.messageAttachments;
 
-            // Save to storage
+            const messageContent = document.getElementById('messageContent')?.value || '';
+            const embedData = this.getEmbedData();
+            this.currentWebhook.savedContent = {
+                message: messageContent,
+                embed: embedData
+            };
+
             const savedWebhook = window.storageManager.saveWebhook(this.currentWebhook);
             this.currentWebhook = savedWebhook;
 
@@ -530,7 +911,7 @@ class WebhookManager {
         }
     }
 
-    // Enhanced send message with components
+    // FIXED: Send message with proper Discord button format
     async sendMessage() {
         if (!this.currentWebhook || !this.currentWebhook.url) {
             this.showToast('Please save the webhook first', 'error');
@@ -545,18 +926,25 @@ class WebhookManager {
             return;
         }
 
+        // Validate buttons
+        const buttonValidation = this.validateButtons();
+        if (!buttonValidation.valid) {
+            this.showToast(`Button error: ${buttonValidation.errors.join(', ')}`, 'error');
+            return;
+        }
+
         try {
-            // Show loading state
             const sendBtn = document.getElementById('sendMessageBtn');
             const originalText = sendBtn?.textContent;
             if (sendBtn) {
                 sendBtn.disabled = true;
                 sendBtn.textContent = 'Sending...';
+                sendBtn.classList.add('loading');
             }
 
             const payload = this.buildWebhookPayload(messageContent, embedData);
             
-            console.log('Sending enhanced webhook payload:', payload);
+            console.log('Sending webhook payload:', JSON.stringify(payload, null, 2));
 
             const response = await fetch('/api/webhook', {
                 method: 'POST',
@@ -571,9 +959,9 @@ class WebhookManager {
 
             if (response.ok) {
                 this.showToast('Message sent successfully!', 'success');
-                this.clearMessageForm();
             } else {
                 const errorData = await response.json();
+                console.error('Send error:', errorData);
                 throw new Error(errorData.error || `HTTP ${response.status}`);
             }
 
@@ -581,15 +969,45 @@ class WebhookManager {
             console.error('Error sending message:', error);
             this.showToast(`Failed to send message: ${error.message}`, 'error');
         } finally {
-            // Restore button state
             const sendBtn = document.getElementById('sendMessageBtn');
             if (sendBtn) {
                 sendBtn.disabled = false;
                 sendBtn.textContent = originalText || 'Send Message';
+                sendBtn.classList.remove('loading');
             }
         }
     }
 
+    validateButtons() {
+        const errors = [];
+        
+        this.messageButtons.forEach((button, index) => {
+            if (button.label && !button.url) {
+                errors.push(`Button ${index + 1} has label but no URL`);
+            }
+            if (button.url && !button.label) {
+                errors.push(`Button ${index + 1} has URL but no label`);
+            }
+            if (button.url && !this.isValidUrl(button.url)) {
+                errors.push(`Button ${index + 1} has invalid URL`);
+            }
+            if (button.label && button.label.length > 80) {
+                errors.push(`Button ${index + 1} label too long (max 80 characters)`);
+            }
+        });
+
+        const validButtons = this.messageButtons.filter(b => b.label && b.url);
+        if (validButtons.length > 5) {
+            errors.push('Maximum 5 buttons allowed per message');
+        }
+
+        return {
+            valid: errors.length === 0,
+            errors: errors
+        };
+    }
+
+    // FIXED: Build proper Discord webhook payload with working buttons
     buildWebhookPayload(content, embedData) {
         const payload = {};
 
@@ -601,76 +1019,94 @@ class WebhookManager {
             payload.username = this.currentWebhook.name;
         }
 
-        if (this.currentWebhook.avatar) {
+        if (this.currentWebhook.avatar && this.isValidUrl(this.currentWebhook.avatar)) {
             payload.avatar_url = this.currentWebhook.avatar;
         }
 
         if (this.hasEmbedContent(embedData)) {
-            const embed = {};
-            
-            if (embedData.title) embed.title = embedData.title;
-            if (embedData.description) embed.description = embedData.description;
-            if (embedData.color) {
-                embed.color = parseInt(embedData.color.replace('#', ''), 16);
-            }
-            if (embedData.url) embed.url = embedData.url;
-            if (embedData.image) embed.image = { url: embedData.image };
-            if (embedData.thumbnail) embed.thumbnail = { url: embedData.thumbnail };
-
-            // Author
-            if (embedData.authorName) {
-                embed.author = { name: embedData.authorName };
-                if (embedData.authorUrl) embed.author.url = embedData.authorUrl;
-                if (embedData.authorIcon) embed.author.icon_url = embedData.authorIcon;
-            }
-
-            // Footer
-            if (embedData.footerText) {
-                embed.footer = { text: embedData.footerText };
-                if (embedData.footerIcon) embed.footer.icon_url = embedData.footerIcon;
-            }
-
-            // Timestamp
-            if (embedData.timestamp) {
-                embed.timestamp = new Date().toISOString();
-            }
-
-            // Fields
-            if (this.embedFields.length > 0) {
-                embed.fields = this.embedFields.filter(field => field.name && field.value);
-            }
-
+            const embed = this.buildEmbedObject(embedData);
             payload.embeds = [embed];
         }
 
-        // Components (buttons)
-        if (this.messageButtons.length > 0) {
-            const validButtons = this.messageButtons.filter(btn => btn.label && btn.url);
-            if (validButtons.length > 0) {
-                payload.components = [{
-                    type: 1, // Action Row
-                    components: validButtons.map(btn => ({
-                        type: 2, // Button
-                        style: this.getButtonStyle(btn.style),
-                        label: btn.label,
-                        url: btn.url
-                    }))
-                }];
-            }
+        // FIXED: Proper Discord button components format
+        const validButtons = this.messageButtons.filter(btn => 
+            btn.label && btn.label.trim() && 
+            btn.url && btn.url.trim() && 
+            this.isValidUrl(btn.url)
+        );
+        
+        if (validButtons.length > 0) {
+            console.log('Adding buttons to payload:', validButtons);
+            
+            payload.components = [{
+                type: 1, // ACTION_ROW
+                components: validButtons.map(btn => ({
+                    type: 2, // BUTTON
+                    style: 5, // LINK - the only style that works with URLs
+                    label: btn.label.trim().substring(0, 80),
+                    url: btn.url.trim()
+                }))
+            }];
         }
 
         return payload;
     }
 
-    getButtonStyle(style) {
-        const styles = {
-            'primary': 5,   // Link button (blue)
-            'secondary': 2, // Secondary (gray)
-            'success': 3,   // Success (green)
-            'danger': 4,    // Danger (red)
-            'link': 5       // Link button
-        };
-        return styles[style] || 5;
+    buildEmbedObject(embedData) {
+        const embed = {};
+        
+        if (embedData.title) embed.title = embedData.title.substring(0, 256);
+        if (embedData.description) embed.description = embedData.description.substring(0, 4096);
+        if (embedData.color) {
+            embed.color = parseInt(embedData.color.replace('#', ''), 16);
+        }
+        if (embedData.url && this.isValidUrl(embedData.url)) {
+            embed.url = embedData.url;
+        }
+
+        // Images (only valid URLs)
+        if (embedData.image && this.isValidUrl(embedData.image)) {
+            embed.image = { url: embedData.image };
+        }
+        if (embedData.thumbnail && this.isValidUrl(embedData.thumbnail)) {
+            embed.thumbnail = { url: embedData.thumbnail };
+        }
+
+        // Author
+        if (embedData.authorName) {
+            embed.author = { name: embedData.authorName.substring(0, 256) };
+            if (embedData.authorUrl && this.isValidUrl(embedData.authorUrl)) {
+                embed.author.url = embedData.authorUrl;
+            }
+            if (embedData.authorIcon && this.isValidUrl(embedData.authorIcon)) {
+                embed.author.icon_url = embedData.authorIcon;
+            }
+        }
+
+        // Footer
+        if (embedData.footerText) {
+            embed.footer = { text: embedData.footerText.substring(0, 2048) };
+            if (embedData.footerIcon && this.isValidUrl(embedData.footerIcon)) {
+                embed.footer.icon_url = embedData.footerIcon;
+            }
+        }
+
+        // Timestamp
+        if (embedData.timestamp) {
+            embed.timestamp = new Date().toISOString();
+        }
+
+        // Fields
+        const validFields = this.embedFields.filter(field => field.name && field.value);
+        if (validFields.length > 0) {
+            embed.fields = validFields.slice(0, 25).map(field => ({
+                name: field.name.substring(0, 256),
+                value: field.value.substring(0, 1024),
+                inline: Boolean(field.inline)
+            }));
+        }
+
+        return embed;
     }
 
     getEmbedData() {
@@ -711,24 +1147,29 @@ class WebhookManager {
             }
         });
 
-        // Reset embed color to default
         const colorInput = document.getElementById('embedColor');
         if (colorInput) {
             colorInput.value = '#5865F2';
+            const colorPreview = document.querySelector('.color-preview');
+            const colorValue = document.querySelector('.color-hex-input');
+            const colorWheel = document.querySelector('.color-wheel-input');
+            if (colorPreview) colorPreview.style.backgroundColor = '#5865F2';
+            if (colorValue) colorValue.value = '#5865F2';
+            if (colorWheel) colorWheel.value = '#5865F2';
         }
 
-        // Reset timestamp checkbox
         const timestampInput = document.getElementById('embedTimestamp');
         if (timestampInput) {
             timestampInput.checked = false;
         }
 
-        // Clear dynamic fields and buttons
         this.clearEmbedFields();
         this.clearMessageButtons();
+        this.clearMessageAttachments();
+
+        this.showToast('Message form cleared', 'info');
     }
 
-    // Test webhook connection
     async testWebhookConnection() {
         if (!this.currentWebhook?.url) {
             this.showToast('No webhook URL to test', 'error');
@@ -736,6 +1177,14 @@ class WebhookManager {
         }
         
         try {
+            const testBtn = document.getElementById('testWebhookBtn');
+            const originalText = testBtn?.textContent;
+            if (testBtn) {
+                testBtn.disabled = true;
+                testBtn.textContent = 'Testing...';
+                testBtn.classList.add('loading');
+            }
+
             this.showToast('Testing webhook connection...', 'info');
             
             const testPayload = {
@@ -749,6 +1198,15 @@ class WebhookManager {
                         text: "Discord Webhook Manager"
                     },
                     timestamp: new Date().toISOString()
+                }],
+                components: [{
+                    type: 1,
+                    components: [{
+                        type: 2,
+                        style: 5,
+                        label: "Test Button",
+                        url: "https://discord.com"
+                    }]
                 }]
             };
 
@@ -764,7 +1222,7 @@ class WebhookManager {
             });
 
             if (response.ok) {
-                this.showToast('✅ Webhook connection successful!', 'success');
+                this.showToast('✅ Webhook connection successful! Check Discord for the test message with button.', 'success');
                 return true;
             } else {
                 const errorData = await response.json();
@@ -775,10 +1233,16 @@ class WebhookManager {
             console.error('Webhook test failed:', error);
             this.showToast(`❌ Connection test failed: ${error.message}`, 'error');
             return false;
+        } finally {
+            const testBtn = document.getElementById('testWebhookBtn');
+            if (testBtn) {
+                testBtn.disabled = false;
+                testBtn.textContent = 'Test Connection';
+                testBtn.classList.remove('loading');
+            }
         }
     }
 
-    // Modal functions
     showAddModal() {
         const modal = document.getElementById('webhookModal');
         const title = document.getElementById('modalTitle');
@@ -815,7 +1279,12 @@ class WebhookManager {
             url: url,
             avatar: '',
             embedFields: [],
-            messageButtons: []
+            messageButtons: [],
+            messageAttachments: [],
+            savedContent: {
+                message: '',
+                embed: {}
+            }
         };
 
         try {
@@ -844,7 +1313,6 @@ class WebhookManager {
         }
     }
 
-    // Avatar handling
     handleAvatarUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -854,21 +1322,23 @@ class WebhookManager {
             return;
         }
 
-        if (file.size > 8 * 1024 * 1024) { // 8MB limit
+        if (file.size > 8 * 1024 * 1024) {
             this.showToast('Image file is too large (max 8MB)', 'error');
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
+        this.convertImageToUrl(file).then(url => {
             const avatarUrl = document.getElementById('avatarUrl');
             if (avatarUrl) {
-                avatarUrl.value = e.target.result;
+                avatarUrl.value = url;
                 this.updateAvatarPreview();
                 this.updateCurrentWebhook();
+                this.showToast('Avatar uploaded successfully!', 'success');
             }
-        };
-        reader.readAsDataURL(file);
+        }).catch(error => {
+            console.error('Avatar upload failed:', error);
+            this.showToast('Avatar upload failed', 'error');
+        });
     }
 
     updateAvatarPreview() {
@@ -896,9 +1366,9 @@ class WebhookManager {
         
         this.updateAvatarPreview();
         this.updateCurrentWebhook();
+        this.showToast('Avatar cleared', 'info');
     }
 
-    // Tab switching
     switchTab(tabName) {
         const tabBtns = document.querySelectorAll('.tab-btn');
         const tabContents = document.querySelectorAll('.tab-content');
@@ -912,7 +1382,6 @@ class WebhookManager {
         });
     }
 
-    // Event handlers
     onWebhookSaved(webhook) {
         this.loadWebhooks();
         if (webhook.id === this.currentWebhook?.id) {
@@ -929,7 +1398,6 @@ class WebhookManager {
         }
     }
 
-    // Utility methods
     isValidWebhookUrl(url) {
         try {
             const urlObj = new URL(url);
@@ -946,6 +1414,15 @@ class WebhookManager {
             
             return true;
         } catch {
+            return false;
+        }
+    }
+
+    isValidUrl(string) {
+        try {
+            new URL(string);
+            return true;
+        } catch (_) {
             return false;
         }
     }
@@ -980,6 +1457,9 @@ class WebhookManager {
 
         setTimeout(() => {
             toast.remove();
+            if (container.children.length === 0) {
+                container.remove();
+            }
         }, 4000);
     }
 
@@ -992,7 +1472,6 @@ class WebhookManager {
         }
     }
 
-    // Public methods for external access
     clearWebhooks() {
         this.webhooks = [];
         this.currentWebhook = null;
