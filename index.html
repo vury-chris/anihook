@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AniHook - Webhook Manager</title>
+    <title>AniHook - Advanced Webhook Manager</title>
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/discord-theme.css">
     <link rel="stylesheet" href="css/components.css">
@@ -25,7 +25,6 @@
             border: 2px solid #3f4147;
             cursor: pointer;
             transition: all 0.2s;
-            position: relative;
         }
 
         .color-preview:hover {
@@ -60,22 +59,10 @@
             background: transparent;
         }
 
-        .color-wheel-input::-webkit-color-swatch {
-            border: 2px solid #3f4147;
-            border-radius: 4px;
-        }
-
-        .color-wheel-input::-webkit-color-swatch-wrapper {
-            padding: 0;
-            border: none;
-            border-radius: 4px;
-        }
-
-        /* Image Upload Enhancements */
         .image-upload-section {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
         }
 
         .image-upload-section input[type="url"] {
@@ -108,7 +95,6 @@
             background: #4752c4;
         }
 
-        /* Message Attachments */
         .message-attachments {
             margin-top: 16px;
             padding: 12px;
@@ -171,25 +157,71 @@
             background: #c12126;
         }
 
-        /* Fixed Field Input Sizes */
-        .embed-field-row {
+        .component-builder {
+            background: #313338;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #3f4147;
+            margin-bottom: 12px;
+        }
+
+        .component-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .component-header h5 {
+            color: #f2f3f5;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .component-type-select {
+            margin-bottom: 12px;
+        }
+
+        .component-config {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .button-config, .select-config {
             display: grid;
-            grid-template-columns: 1fr 1fr auto;
-            gap: 12px;
-            align-items: start;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            align-items: end;
         }
 
-        .field-input {
-            width: 100%;
-            min-height: 40px;
+        .select-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
-        .field-input textarea {
-            height: 60px;
-            resize: vertical;
+        .select-option {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr auto;
+            gap: 8px;
+            align-items: center;
+            padding: 8px;
+            background: #2b2d31;
+            border-radius: 4px;
         }
 
-        /* Enhanced Message Composer */
+        .option-label, .option-value, .option-description {
+            background: #1e1f22;
+            border: 1px solid #3f4147;
+            color: #f2f3f5;
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
         .message-tools {
             display: flex;
             gap: 8px;
@@ -223,15 +255,101 @@
         .message-tool-btn.active {
             background: #5865f2;
         }
+
+        /* Select Menu Styles */
+        .discord-select-menu {
+            background: #4e5058;
+            border: 1px solid #72767d;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin: 4px 0;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            max-width: 320px;
+        }
+
+        .discord-select-placeholder {
+            color: #dcddde;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .discord-select-placeholder::after {
+            content: '▼';
+            float: right;
+            font-size: 0.75rem;
+            color: #72767d;
+        }
+
+        .discord-select-menu:hover {
+            background: #5c5f66;
+        }
+
+        .discord-select-options {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #2f3136;
+            border: 1px solid #40444b;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .discord-select-option {
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+
+        .discord-select-option:hover {
+            background: #40444b;
+        }
+
+        .discord-select-option-label {
+            color: #dcddde;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .discord-select-option-description {
+            color: #b9bbbe;
+            font-size: 0.75rem;
+        }
+
+        /* Component Builder Enhancements */
+        .component-attachment {
+            background: #1e1f22;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #3f4147;
+        }
+
+        .component-attachment h4 {
+            color: #f2f3f5;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .component-attachment p {
+            margin-bottom: 16px;
+        }
     </style>
 </head>
 <body>
-    <!-- Header -->
     <header class="header">
         <div class="header-content">
             <div class="logo">
                 <img src="assets/discord-logo.png" alt="Discord" class="discord-logo">
-                <h1>Webhook Manager</h1>
+                <h1>AniHook Manager</h1>
             </div>
             <div class="user-info" id="userInfo">
                 <button id="loginBtn" class="login-btn">Login with Discord</button>
@@ -244,13 +362,11 @@
         </div>
     </header>
 
-    <!-- Main Content -->
     <main class="main-content">
-        <!-- Login Prompt -->
         <div id="loginPrompt" class="login-prompt">
             <div class="login-card">
-                <h2>Welcome to Discord Webhook Manager</h2>
-                <p>Sign in with Discord to manage your webhooks</p>
+                <h2>Welcome to AniHook Manager</h2>
+                <p>Advanced Discord webhook management with components</p>
                 <button id="loginBtnMain" class="login-btn-main">
                     <img src="assets/discord-logo.png" alt="Discord">
                     Login with Discord
@@ -258,10 +374,8 @@
             </div>
         </div>
 
-        <!-- App Content -->
         <div id="appContent" class="app-content hidden">
             <div class="container">
-                <!-- Sidebar - Discord Member List Style -->
                 <aside class="sidebar">
                     <div class="webhook-list">
                         <div class="section-header">
@@ -272,10 +386,8 @@
                     </div>
                 </aside>
 
-                <!-- Main Editor -->
                 <section class="editor-section">
                     <div id="webhookEditor" class="webhook-editor hidden">
-                        <!-- Webhook Settings -->
                         <div class="webhook-settings">
                             <h3>Webhook Configuration</h3>
                             <div class="settings-grid">
@@ -289,7 +401,6 @@
                                 </div>
                             </div>
                             
-                            <!-- Avatar Settings -->
                             <div class="avatar-settings">
                                 <label>Webhook Avatar</label>
                                 <div class="avatar-controls">
@@ -308,7 +419,6 @@
                             </div>
                         </div>
 
-                        <!-- Message Composer -->
                         <div class="message-composer">
                             <h3>Message Content</h3>
                             <div class="composer-tabs">
@@ -317,9 +427,7 @@
                                 <button class="tab-btn" data-tab="components">Components</button>
                             </div>
                             
-                            <!-- Message Tab -->
                             <div id="messageTab" class="tab-content active">
-                                <!-- Message Tools -->
                                 <div class="message-tools">
                                     <button type="button" id="messageImageBtn" class="message-tool-btn">
                                         📷 Add Image
@@ -329,20 +437,15 @@
                                 
                                 <textarea id="messageContent" placeholder="Type your message here..."></textarea>
                                 
-                                <!-- Message Attachments -->
-                                <div id="messageAttachments" class="message-attachments" style="display: none;">
-                                    <!-- Dynamic attachments will be added here -->
-                                </div>
+                                <div id="messageAttachments" class="message-attachments" style="display: none;"></div>
                                 
                                 <div class="formatting-help">
                                     <span>Format your message using <a href="https://support.discord.com/hc/en-us/articles/210298617-Markdown-Text-101-Chat-Formatting" target="_blank">Markdown</a>.</span>
                                 </div>
                             </div>
 
-                            <!-- Enhanced Embed Tab -->
                             <div id="embedTab" class="tab-content">
                                 <div class="embed-builder">
-                                    <!-- Basic Embed Info -->
                                     <div class="embed-section-group">
                                         <h4>Basic Information</h4>
                                         <div class="embed-section">
@@ -360,11 +463,9 @@
                                         <div class="embed-section">
                                             <label for="embedColor">Color</label>
                                             <input type="color" id="embedColor" value="#5865F2">
-                                            <!-- Modern color picker will be injected here by JavaScript -->
                                         </div>
                                     </div>
 
-                                    <!-- Author Section -->
                                     <div class="embed-section-group">
                                         <h4>Author</h4>
                                         <div class="embed-section">
@@ -385,7 +486,6 @@
                                         </div>
                                     </div>
 
-                                    <!-- Images -->
                                     <div class="embed-section-group">
                                         <h4>Images</h4>
                                         <div class="embed-section">
@@ -406,7 +506,6 @@
                                         </div>
                                     </div>
 
-                                    <!-- Footer -->
                                     <div class="embed-section-group">
                                         <h4>Footer</h4>
                                         <div class="embed-section">
@@ -429,30 +528,27 @@
                                         </div>
                                     </div>
 
-                                    <!-- Fields -->
                                     <div class="embed-section-group">
                                         <h4>Fields</h4>
-                                        <div class="embed-fields" id="embedFields">
-                                            <!-- Dynamic fields will be added here -->
-                                        </div>
+                                        <div class="embed-fields" id="embedFields"></div>
                                         <button type="button" id="addFieldBtn" class="add-field-btn">+ Add Field</button>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Components Tab -->
                             <div id="componentsTab" class="tab-content">
-                                <div class="button-attachment">
-                                    <h4>Message Buttons</h4>
-                                    <div id="messageButtons">
-                                        <!-- Dynamic buttons will be added here -->
-                                    </div>
-                                    <button type="button" id="addButtonBtn" class="add-field-btn">+ Add Button</button>
+                                <div class="component-attachment">
+                                    <h4>Interactive Components</h4>
+                                    <p style="color: #87898c; font-size: 0.875rem; margin-bottom: 16px;">
+                                        Add buttons and select menus to make your messages interactive.
+                                        <strong>Note:</strong> Only link buttons work with regular webhooks.
+                                    </p>
+                                    <div id="messageComponents"></div>
+                                    <button type="button" id="addComponentBtn" class="add-field-btn">+ Add Component</button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Action Buttons -->
                         <div class="action-buttons">
                             <button id="saveWebhookBtn" class="primary-btn">Save Webhook</button>
                             <button id="testWebhookBtn" class="secondary-btn">Test Connection</button>
@@ -461,14 +557,13 @@
                         </div>
                     </div>
 
-                    <!-- Welcome Message -->
                     <div id="welcomeMessage" class="welcome-message">
-                        <h2>Welcome to Webhook Manager</h2>
-                        <p>Select a webhook from the sidebar or create a new one to get started.</p>
+                        <h2>Welcome to AniHook Manager</h2>
+                        <p>Advanced Discord webhook management with interactive components, image uploads, and more.</p>
+                        <small>Select a webhook from the sidebar or create a new one to get started.</small>
                     </div>
                 </section>
 
-                <!-- Preview Canvas -->
                 <section class="preview-section">
                     <div class="preview-header">
                         <h3>Live Preview</h3>
@@ -481,7 +576,9 @@
                     </div>
                     <div id="discordPreview" class="discord-preview">
                         <div class="preview-placeholder">
+                            <h3>💬 Message Preview</h3>
                             <p>Your message preview will appear here</p>
+                            <small>Start typing a message or creating an embed to see the preview</small>
                         </div>
                     </div>
                 </section>
@@ -489,7 +586,6 @@
         </div>
     </main>
 
-    <!-- Modals -->
     <div id="webhookModal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
@@ -513,7 +609,6 @@
         </div>
     </div>
 
-    <!-- Scripts -->
     <script src="js/storage.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/markdown-parser.js"></script>

@@ -3,7 +3,7 @@ class WebhookManager {
         this.currentWebhook = null;
         this.webhooks = [];
         this.embedFields = [];
-        this.messageButtons = [];
+        this.messageComponents = [];
         this.messageAttachments = [];
         this.init();
     }
@@ -55,22 +55,17 @@ class WebhookManager {
                     colorInput.style.display = 'none';
                     colorInput.parentNode.appendChild(wrapper);
                     
-                    colorWheel.addEventListener('input', (e) => {
-                        const color = e.target.value;
-                        colorInput.value = color;
-                        colorPreview.style.backgroundColor = color;
-                        colorValue.value = color;
-                        this.updateCurrentWebhook();
-                    });
-                    
-                    colorValue.addEventListener('input', (e) => {
-                        const color = e.target.value;
-                        if (/^#[0-9A-F]{6}$/i.test(color)) {
+                    [colorWheel, colorValue].forEach(input => {
+                        input.addEventListener('input', (e) => {
+                            const color = e.target.value;
+                            if (input === colorValue && !/^#[0-9A-F]{6}$/i.test(color)) return;
+                            
                             colorInput.value = color;
                             colorPreview.style.backgroundColor = color;
-                            colorWheel.value = color;
+                            if (input !== colorValue) colorValue.value = color;
+                            if (input !== colorWheel) colorWheel.value = color;
                             this.updateCurrentWebhook();
-                        }
+                        });
                     });
                 }
             }, 100);
@@ -103,108 +98,55 @@ class WebhookManager {
         });
     }
 
-    // FIXED: Properly setup all image upload handlers
     setupImageHandling() {
         document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
-                // Message image upload
-                const messageImageBtn = document.getElementById('messageImageBtn');
-                const messageImageFile = document.getElementById('messageImageFile');
-                
-                if (messageImageBtn && messageImageFile) {
-                    messageImageBtn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        console.log('Message image button clicked');
-                        messageImageFile.click();
-                    });
+                const imageInputs = [
+                    { btn: 'messageImageBtn', file: 'messageImageFile', target: null },
+                    { btn: 'embedImageBtn', file: 'embedImageFile', target: 'embedImage' },
+                    { btn: 'embedThumbnailBtn', file: 'embedThumbnailFile', target: 'embedThumbnail' }
+                ];
+
+                imageInputs.forEach(({ btn, file, target }) => {
+                    const button = document.getElementById(btn);
+                    const fileInput = document.getElementById(file);
                     
-                    messageImageFile.addEventListener('change', (e) => {
-                        console.log('Message image file selected');
-                        this.handleMessageImageUpload(e);
-                    });
-                }
-
-                // Embed main image upload
-                const embedImageBtn = document.getElementById('embedImageBtn');
-                const embedImageFile = document.getElementById('embedImageFile');
-                
-                if (embedImageBtn && embedImageFile) {
-                    embedImageBtn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        console.log('Embed image button clicked');
-                        embedImageFile.click();
-                    });
-                    
-                    embedImageFile.addEventListener('change', (e) => {
-                        console.log('Embed image file selected');
-                        this.handleEmbedImageUpload(e, 'embedImage');
-                    });
-                }
-
-                // Embed thumbnail upload
-                const embedThumbnailBtn = document.getElementById('embedThumbnailBtn');
-                const embedThumbnailFile = document.getElementById('embedThumbnailFile');
-                
-                if (embedThumbnailBtn && embedThumbnailFile) {
-                    embedThumbnailBtn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        console.log('Thumbnail button clicked');
-                        embedThumbnailFile.click();
-                    });
-                    
-                    embedThumbnailFile.addEventListener('change', (e) => {
-                        console.log('Thumbnail file selected');
-                        this.handleEmbedImageUpload(e, 'embedThumbnail');
-                    });
-                }
-
-                // Setup other upload buttons by finding them dynamically
-                this.setupDynamicImageHandlers();
-                
-            }, 1000); // Increased timeout to ensure DOM is ready
-        });
-    }
-
-    // FIXED: Setup image handlers for dynamically found buttons
-    setupDynamicImageHandlers() {
-        // Find all upload buttons and set them up
-        const uploadButtons = document.querySelectorAll('.upload-btn');
-        console.log('Found upload buttons:', uploadButtons.length);
-        
-        uploadButtons.forEach(button => {
-            // Skip if already has listener
-            if (button.hasAttribute('data-listener-added')) return;
-            
-            button.addEventListener('click', (e) => {
-                e.preventDefault();
-                console.log('Upload button clicked:', button);
-                
-                // Find the associated file input
-                const section = button.closest('.embed-section');
-                if (section) {
-                    const textInput = section.querySelector('input[type="url"]');
-                    if (textInput) {
-                        const inputId = textInput.id;
-                        const fileInputId = inputId + 'File';
-                        const fileInput = document.getElementById(fileInputId);
-                        
-                        console.log('Looking for file input:', fileInputId);
-                        
-                        if (fileInput) {
+                    if (button && fileInput) {
+                        button.addEventListener('click', (e) => {
+                            e.preventDefault();
                             fileInput.click();
-                        } else {
-                            // Create file input if it doesn't exist
-                            this.createFileInput(fileInputId, inputId);
-                        }
+                        });
+                        
+                        fileInput.addEventListener('change', (e) => {
+                            if (target) {
+                                this.handleEmbedImageUpload(e, target);
+                            } else {
+                                this.handleMessageImageUpload(e);
+                            }
+                        });
                     }
-                }
-            });
-            
-            button.setAttribute('data-listener-added', 'true');
+                });
+
+                document.querySelectorAll('.upload-btn').forEach(button => {
+                    if (button.hasAttribute('data-listener-added')) return;
+                    
+                    button.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const section = button.closest('.embed-section');
+                        if (section) {
+                            const textInput = section.querySelector('input[type="url"]');
+                            if (textInput) {
+                                this.createFileInput(textInput.id + 'File', textInput.id);
+                            }
+                        }
+                    });
+                    
+                    button.setAttribute('data-listener-added', 'true');
+                });
+            }, 1000);
         });
     }
 
-    // FIXED: Create file input for upload buttons
     createFileInput(fileInputId, targetInputId) {
         const fileInput = document.createElement('input');
         fileInput.type = 'file';
@@ -220,12 +162,9 @@ class WebhookManager {
         fileInput.click();
     }
 
-    // FIXED: Handle message image uploads with proper conversion
-    handleMessageImageUpload(event) {
+    async handleMessageImageUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
-
-        console.log('Processing message image:', file.name);
 
         if (!file.type.startsWith('image/')) {
             this.showToast('Please select an image file', 'error');
@@ -237,156 +176,108 @@ class WebhookManager {
             return;
         }
 
-        // Convert to imgur or similar service
-        this.convertImageToUrl(file).then(url => {
-            if (url) {
-                this.messageAttachments.push({
-                    name: file.name,
-                    url: url,
-                    type: 'image'
-                });
-                this.updateMessageAttachmentsUI();
+        try {
+            const url = await this.uploadImage(file);
+            this.messageAttachments.push({
+                name: file.name,
+                url: url,
+                type: 'image'
+            });
+            this.updateMessageAttachmentsUI();
+            this.updateCurrentWebhook();
+            this.showToast('Image uploaded successfully!', 'success');
+        } catch (error) {
+            console.error('Image upload failed:', error);
+            this.showToast('Image upload failed: ' + error.message, 'error');
+        }
+    }
+
+    async handleEmbedImageUpload(event, targetInputId) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            this.showToast('Please select an image file', 'error');
+            return;
+        }
+
+        if (file.size > 8 * 1024 * 1024) {
+            this.showToast('Image file is too large (max 8MB)', 'error');
+            return;
+        }
+
+        try {
+            const url = await this.uploadImage(file);
+            const targetInput = document.getElementById(targetInputId);
+            if (targetInput) {
+                targetInput.value = url;
                 this.updateCurrentWebhook();
+                
+                if (window.discordPreview) {
+                    setTimeout(() => window.discordPreview.refreshPreview(), 100);
+                }
+                
                 this.showToast('Image uploaded successfully!', 'success');
             }
-        }).catch(error => {
-            console.error('Image upload failed:', error);
-            this.showToast('Image upload failed. Try using a direct image URL instead.', 'error');
-        });
-    }
-
-    // FIXED: Handle embed image uploads with proper URL setting
-    handleEmbedImageUpload(event, targetInputId) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        console.log('Processing embed image for:', targetInputId);
-
-        if (!file.type.startsWith('image/')) {
-            this.showToast('Please select an image file', 'error');
-            return;
-        }
-
-        if (file.size > 8 * 1024 * 1024) {
-            this.showToast('Image file is too large (max 8MB)', 'error');
-            return;
-        }
-
-        // Convert to a usable URL
-        this.convertImageToUrl(file).then(url => {
-            if (url) {
-                const targetInput = document.getElementById(targetInputId);
-                if (targetInput) {
-                    targetInput.value = url;
-                    this.updateCurrentWebhook();
-                    
-                    // Trigger preview update
-                    if (window.discordPreview) {
-                        setTimeout(() => window.discordPreview.refreshPreview(), 100);
-                    }
-                    
-                    this.showToast(`Image uploaded for ${targetInputId}!`, 'success');
-                } else {
-                    console.error('Target input not found:', targetInputId);
-                }
-            }
-        }).catch(error => {
-            console.error('Image upload failed:', error);
-            this.showToast('Image upload failed. Try using a direct image URL instead.', 'error');
-        });
-    }
-
-    // FIXED: Convert image to usable URL (using a free image hosting service)
-    async convertImageToUrl(file) {
-        try {
-            // For demo purposes, we'll create a data URL (not ideal for production)
-            // In production, you'd want to upload to imgur, cloudinary, or similar
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    // For now, return data URL with warning
-                    this.showToast('⚠️ Using local image data. For production, upload to imgur.com or similar service.', 'warning');
-                    resolve(e.target.result);
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
         } catch (error) {
-            console.error('Image conversion error:', error);
-            throw error;
+            console.error('Image upload failed:', error);
+            this.showToast('Image upload failed: ' + error.message, 'error');
         }
     }
 
-    updateMessageAttachmentsUI() {
-        const container = document.getElementById('messageAttachments');
-        if (!container) return;
+    async uploadImage(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const response = await fetch('/api/upload-image', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            imageData: e.target.result,
+                            filename: file.name
+                        })
+                    });
 
-        if (this.messageAttachments.length === 0) {
-            container.innerHTML = '';
-            container.style.display = 'none';
-            return;
-        }
+                    if (!response.ok) {
+                        throw new Error(`Upload failed: ${response.status}`);
+                    }
 
-        container.style.display = 'block';
-        const html = this.messageAttachments.map((attachment, index) => `
-            <div class="message-attachment" data-index="${index}">
-                <img src="${attachment.url}" alt="${attachment.name}" class="attachment-preview">
-                <div class="attachment-info">
-                    <span class="attachment-name">${this.escapeHtml(attachment.name)}</span>
-                    <button type="button" class="remove-attachment-btn" onclick="webhookManager.removeMessageAttachment(${index})" title="Remove attachment">×</button>
-                </div>
-            </div>
-        `).join('');
-
-        container.innerHTML = html;
-    }
-
-    updateMessageAttachmentsVisibility() {
-        const container = document.getElementById('messageAttachments');
-        if (container) {
-            if (this.messageAttachments && this.messageAttachments.length > 0) {
-                container.style.display = 'block';
-            } else {
-                container.style.display = 'none';
-            }
-        }
-    }
-
-    removeMessageAttachment(index) {
-        this.messageAttachments.splice(index, 1);
-        this.updateMessageAttachmentsUI();
-        this.updateCurrentWebhook();
-        this.showToast('Attachment removed', 'info');
+                    const data = await response.json();
+                    if (data.success) {
+                        if (data.fallback) {
+                            this.showToast(data.warning, 'warning');
+                        }
+                        resolve(data.url);
+                    } else {
+                        throw new Error(data.error || 'Upload failed');
+                    }
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
     }
 
     setupFormListeners() {
-        const saveBtn = document.getElementById('saveWebhookBtn');
-        if (saveBtn) {
-            saveBtn.addEventListener('click', () => this.saveCurrentWebhook());
-        }
+        const buttons = [
+            { id: 'saveWebhookBtn', action: () => this.saveCurrentWebhook() },
+            { id: 'deleteWebhookBtn', action: () => this.deleteCurrentWebhook() },
+            { id: 'sendMessageBtn', action: () => this.sendMessage() },
+            { id: 'addWebhookBtn', action: () => this.showAddModal() },
+            { id: 'testWebhookBtn', action: () => this.testWebhookConnection() }
+        ];
 
-        const deleteBtn = document.getElementById('deleteWebhookBtn');
-        if (deleteBtn) {
-            deleteBtn.addEventListener('click', () => this.deleteCurrentWebhook());
-        }
+        buttons.forEach(({ id, action }) => {
+            const element = document.getElementById(id);
+            if (element) element.addEventListener('click', action);
+        });
 
-        const sendBtn = document.getElementById('sendMessageBtn');
-        if (sendBtn) {
-            sendBtn.addEventListener('click', () => this.sendMessage());
-        }
-
-        const addBtn = document.getElementById('addWebhookBtn');
-        if (addBtn) {
-            addBtn.addEventListener('click', () => this.showAddModal());
-        }
-
-        const testBtn = document.getElementById('testWebhookBtn');
-        if (testBtn) {
-            testBtn.addEventListener('click', () => this.testWebhookConnection());
-        }
-
-        const inputs = ['webhookName', 'webhookUrl', 'avatarUrl'];
-        inputs.forEach(id => {
+        ['webhookName', 'webhookUrl', 'avatarUrl'].forEach(id => {
             const element = document.getElementById(id);
             if (element) {
                 element.addEventListener('input', () => this.updateCurrentWebhook());
@@ -416,10 +307,198 @@ class WebhookManager {
     }
 
     setupComponentBuilder() {
-        const addButtonBtn = document.getElementById('addButtonBtn');
-        if (addButtonBtn) {
-            addButtonBtn.addEventListener('click', () => this.addMessageButton());
+        const addComponentBtn = document.getElementById('addComponentBtn');
+        if (addComponentBtn) {
+            addComponentBtn.addEventListener('click', () => this.addComponent());
         }
+    }
+
+    addComponent() {
+        const container = document.getElementById('messageComponents');
+        const index = this.messageComponents.length;
+        
+        const html = `
+            <div class="component-builder" data-component-index="${index}">
+                <div class="component-header">
+                    <h5>Component ${index + 1}</h5>
+                    <button type="button" class="remove-field-btn" onclick="webhookManager.removeComponent(${index})">Remove</button>
+                </div>
+                <div class="component-type-select">
+                    <label>Type</label>
+                    <select id="componentType${index}" onchange="webhookManager.updateComponentType(${index})">
+                        <option value="button">Button</option>
+                        <option value="select">Select Menu</option>
+                    </select>
+                </div>
+                <div id="componentConfig${index}" class="component-config">
+                    ${this.getButtonConfig(index)}
+                </div>
+            </div>
+        `;
+        
+        container.insertAdjacentHTML('beforeend', html);
+        this.messageComponents.push({ type: 'button', label: '', url: '', style: 'link' });
+        this.setupComponentListeners(index);
+    }
+
+    getButtonConfig(index) {
+        return `
+            <div class="button-config">
+                <div class="embed-section">
+                    <label>Label</label>
+                    <input type="text" id="componentLabel${index}" placeholder="Click me!" maxlength="80">
+                </div>
+                <div class="embed-section">
+                    <label>Style</label>
+                    <select id="componentStyle${index}">
+                        <option value="link">Link (URL)</option>
+                        <option value="primary">Primary</option>
+                        <option value="secondary">Secondary</option>
+                        <option value="success">Success</option>
+                        <option value="danger">Danger</option>
+                    </select>
+                </div>
+                <div class="embed-section" id="componentUrlSection${index}">
+                    <label>URL</label>
+                    <input type="url" id="componentUrl${index}" placeholder="https://example.com">
+                </div>
+            </div>
+        `;
+    }
+
+    getSelectConfig(index) {
+        return `
+            <div class="select-config">
+                <div class="embed-section">
+                    <label>Placeholder</label>
+                    <input type="text" id="componentPlaceholder${index}" placeholder="Select an option..." maxlength="150">
+                </div>
+                <div class="embed-section">
+                    <label>Options</label>
+                    <div id="selectOptions${index}" class="select-options">
+                        <div class="select-option">
+                            <input type="text" placeholder="Option label" class="option-label">
+                            <input type="text" placeholder="Option value" class="option-value">
+                            <input type="text" placeholder="Description (optional)" class="option-description">
+                        </div>
+                    </div>
+                    <button type="button" onclick="webhookManager.addSelectOption(${index})">Add Option</button>
+                </div>
+            </div>
+        `;
+    }
+
+    updateComponentType(index) {
+        const typeSelect = document.getElementById(`componentType${index}`);
+        const configDiv = document.getElementById(`componentConfig${index}`);
+        const type = typeSelect.value;
+
+        if (type === 'button') {
+            configDiv.innerHTML = this.getButtonConfig(index);
+            this.messageComponents[index] = { type: 'button', label: '', url: '', style: 'link' };
+        } else if (type === 'select') {
+            configDiv.innerHTML = this.getSelectConfig(index);
+            this.messageComponents[index] = { type: 'select', placeholder: '', options: [] };
+        }
+
+        this.setupComponentListeners(index);
+    }
+
+    setupComponentListeners(index) {
+        const inputs = [
+            `componentLabel${index}`,
+            `componentUrl${index}`,
+            `componentStyle${index}`,
+            `componentPlaceholder${index}`
+        ];
+
+        inputs.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('input', () => this.updateComponent(index));
+            }
+        });
+
+        const styleSelect = document.getElementById(`componentStyle${index}`);
+        if (styleSelect) {
+            styleSelect.addEventListener('change', () => {
+                const urlSection = document.getElementById(`componentUrlSection${index}`);
+                if (urlSection) {
+                    urlSection.style.display = styleSelect.value === 'link' ? 'block' : 'none';
+                }
+                this.updateComponent(index);
+            });
+        }
+    }
+
+    updateComponent(index) {
+        const component = this.messageComponents[index];
+        if (!component) return;
+
+        if (component.type === 'button') {
+            const label = document.getElementById(`componentLabel${index}`)?.value || '';
+            const url = document.getElementById(`componentUrl${index}`)?.value || '';
+            const style = document.getElementById(`componentStyle${index}`)?.value || 'link';
+
+            this.messageComponents[index] = { type: 'button', label, url, style };
+        } else if (component.type === 'select') {
+            const placeholder = document.getElementById(`componentPlaceholder${index}`)?.value || '';
+            const options = this.getSelectOptions(index);
+
+            this.messageComponents[index] = { type: 'select', placeholder, options };
+        }
+
+        this.updateCurrentWebhook();
+    }
+
+    getSelectOptions(index) {
+        const optionsContainer = document.getElementById(`selectOptions${index}`);
+        if (!optionsContainer) return [];
+
+        const options = [];
+        optionsContainer.querySelectorAll('.select-option').forEach(option => {
+            const label = option.querySelector('.option-label')?.value || '';
+            const value = option.querySelector('.option-value')?.value || '';
+            const description = option.querySelector('.option-description')?.value || '';
+
+            if (label && value) {
+                options.push({ label, value, description });
+            }
+        });
+
+        return options;
+    }
+
+    addSelectOption(index) {
+        const container = document.getElementById(`selectOptions${index}`);
+        const html = `
+            <div class="select-option">
+                <input type="text" placeholder="Option label" class="option-label">
+                <input type="text" placeholder="Option value" class="option-value">
+                <input type="text" placeholder="Description (optional)" class="option-description">
+                <button type="button" onclick="this.closest('.select-option').remove()">Remove</button>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', html);
+    }
+
+    removeComponent(index) {
+        const element = document.querySelector(`[data-component-index="${index}"]`);
+        if (element) {
+            element.remove();
+            this.messageComponents.splice(index, 1);
+            this.updateCurrentWebhook();
+            this.renumberComponents();
+        }
+    }
+
+    renumberComponents() {
+        const elements = document.querySelectorAll('.component-builder');
+        elements.forEach((element, index) => {
+            element.setAttribute('data-component-index', index);
+            const header = element.querySelector('h5');
+            if (header) header.textContent = `Component ${index + 1}`;
+        });
     }
 
     addEmbedField() {
@@ -477,13 +556,7 @@ class WebhookManager {
         fieldElements.forEach((element, index) => {
             element.setAttribute('data-field-index', index);
             const header = element.querySelector('h5');
-            if (header) {
-                header.textContent = `Field ${index + 1}`;
-            }
-            const removeBtn = element.querySelector('.remove-field-btn');
-            if (removeBtn) {
-                removeBtn.setAttribute('onclick', `webhookManager.removeEmbedField(${index})`);
-            }
+            if (header) header.textContent = `Field ${index + 1}`;
         });
     }
 
@@ -502,75 +575,35 @@ class WebhookManager {
         }
     }
 
-    addMessageButton() {
-        const buttonsContainer = document.getElementById('messageButtons');
-        const buttonIndex = this.messageButtons.length;
-        
-        const buttonHtml = `
-            <div class="button-row" data-button-index="${buttonIndex}">
-                <div class="embed-section">
-                    <label>Button Label</label>
-                    <input type="text" id="buttonLabel${buttonIndex}" placeholder="Click me!" maxlength="80">
+    updateMessageAttachmentsUI() {
+        const container = document.getElementById('messageAttachments');
+        if (!container) return;
+
+        if (this.messageAttachments.length === 0) {
+            container.innerHTML = '';
+            container.style.display = 'none';
+            return;
+        }
+
+        container.style.display = 'block';
+        const html = this.messageAttachments.map((attachment, index) => `
+            <div class="message-attachment" data-index="${index}">
+                <img src="${attachment.url}" alt="${attachment.name}" class="attachment-preview">
+                <div class="attachment-info">
+                    <span class="attachment-name">${this.escapeHtml(attachment.name)}</span>
+                    <button type="button" class="remove-attachment-btn" onclick="webhookManager.removeMessageAttachment(${index})" title="Remove attachment">×</button>
                 </div>
-                <div class="embed-section">
-                    <label>Button URL</label>
-                    <input type="url" id="buttonUrl${buttonIndex}" placeholder="https://example.com">
-                </div>
-                <div class="embed-section">
-                    <label>Style</label>
-                    <select id="buttonStyle${buttonIndex}" class="button-style-select">
-                        <option value="link">Link Button</option>
-                    </select>
-                </div>
-                <button type="button" class="remove-field-btn" onclick="webhookManager.removeButton(${buttonIndex})">Remove</button>
             </div>
-        `;
-        
-        buttonsContainer.insertAdjacentHTML('beforeend', buttonHtml);
-        this.messageButtons.push({ label: '', url: '', style: 'link' });
-        
-        ['buttonLabel' + buttonIndex, 'buttonUrl' + buttonIndex, 'buttonStyle' + buttonIndex].forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-                element.addEventListener('input', () => this.updateMessageButton(buttonIndex));
-            }
-        });
+        `).join('');
+
+        container.innerHTML = html;
     }
 
-    removeButton(index) {
-        const buttonElement = document.querySelector(`[data-button-index="${index}"]`);
-        if (buttonElement) {
-            buttonElement.remove();
-            this.messageButtons.splice(index, 1);
-            this.updateCurrentWebhook();
-            this.renumberButtons();
-        }
-    }
-
-    renumberButtons() {
-        const buttonElements = document.querySelectorAll('[data-button-index]');
-        buttonElements.forEach((element, index) => {
-            element.setAttribute('data-button-index', index);
-            const removeBtn = element.querySelector('.remove-field-btn');
-            if (removeBtn) {
-                removeBtn.setAttribute('onclick', `webhookManager.removeButton(${index})`);
-            }
-        });
-    }
-
-    updateMessageButton(index) {
-        const labelInput = document.getElementById(`buttonLabel${index}`);
-        const urlInput = document.getElementById(`buttonUrl${index}`);
-        const styleInput = document.getElementById(`buttonStyle${index}`);
-        
-        if (this.messageButtons[index]) {
-            this.messageButtons[index] = {
-                label: labelInput?.value || '',
-                url: urlInput?.value || '',
-                style: styleInput?.value || 'link'
-            };
-            this.updateCurrentWebhook();
-        }
+    removeMessageAttachment(index) {
+        this.messageAttachments.splice(index, 1);
+        this.updateMessageAttachmentsUI();
+        this.updateCurrentWebhook();
+        this.showToast('Attachment removed', 'info');
     }
 
     setupModalListeners() {
@@ -590,9 +623,7 @@ class WebhookManager {
 
         if (modal) {
             modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    this.hideModal();
-                }
+                if (e.target === modal) this.hideModal();
             });
         }
     }
@@ -685,9 +716,7 @@ class WebhookManager {
 
     clearAllFormContent() {
         const messageContent = document.getElementById('messageContent');
-        if (messageContent) {
-            messageContent.value = '';
-        }
+        if (messageContent) messageContent.value = '';
 
         const embedInputs = [
             'embedTitle', 'embedDescription', 'embedUrl', 'embedImage', 'embedThumbnail',
@@ -697,35 +726,41 @@ class WebhookManager {
 
         embedInputs.forEach(id => {
             const element = document.getElementById(id);
-            if (element) {
-                element.value = '';
-            }
+            if (element) element.value = '';
         });
 
         const colorInput = document.getElementById('embedColor');
         if (colorInput) {
             colorInput.value = '#5865F2';
-            const colorPreview = document.querySelector('.color-preview');
-            const colorValue = document.querySelector('.color-hex-input');
-            const colorWheel = document.querySelector('.color-wheel-input');
-            if (colorPreview) colorPreview.style.backgroundColor = '#5865F2';
-            if (colorValue) colorValue.value = '#5865F2';
-            if (colorWheel) colorWheel.value = '#5865F2';
+            this.updateColorPicker('#5865F2');
         }
 
         const timestampInput = document.getElementById('embedTimestamp');
-        if (timestampInput) {
-            timestampInput.checked = false;
-        }
+        if (timestampInput) timestampInput.checked = false;
 
         this.clearEmbedFields();
-        this.clearMessageButtons();
+        this.clearMessageComponents();
         this.clearMessageAttachments();
+    }
+
+    updateColorPicker(color) {
+        const colorPreview = document.querySelector('.color-preview');
+        const colorValue = document.querySelector('.color-hex-input');
+        const colorWheel = document.querySelector('.color-wheel-input');
+        if (colorPreview) colorPreview.style.backgroundColor = color;
+        if (colorValue) colorValue.value = color;
+        if (colorWheel) colorWheel.value = color;
     }
 
     clearMessageAttachments() {
         this.messageAttachments = [];
         this.updateMessageAttachmentsUI();
+    }
+
+    clearMessageComponents() {
+        const container = document.getElementById('messageComponents');
+        if (container) container.innerHTML = '';
+        this.messageComponents = [];
     }
 
     populateForm(webhook) {
@@ -737,9 +772,7 @@ class WebhookManager {
 
         Object.entries(fields).forEach(([id, value]) => {
             const element = document.getElementById(id);
-            if (element) {
-                element.value = value;
-            }
+            if (element) element.value = value;
         });
 
         if (webhook.savedContent) {
@@ -762,12 +795,7 @@ class WebhookManager {
                 });
 
                 if (embed.color) {
-                    const colorPreview = document.querySelector('.color-preview');
-                    const colorValue = document.querySelector('.color-hex-input');
-                    const colorWheel = document.querySelector('.color-wheel-input');
-                    if (colorPreview) colorPreview.style.backgroundColor = embed.color;
-                    if (colorValue) colorValue.value = embed.color;
-                    if (colorWheel) colorWheel.value = embed.color;
+                    this.updateColorPicker(embed.color);
                 }
             }
         }
@@ -781,12 +809,18 @@ class WebhookManager {
             });
         }
 
-        if (webhook.messageButtons) {
-            webhook.messageButtons.forEach((button, index) => {
-                this.addMessageButton();
-                document.getElementById(`buttonLabel${index}`).value = button.label || '';
-                document.getElementById(`buttonUrl${index}`).value = button.url || '';
-                document.getElementById(`buttonStyle${index}`).value = button.style || 'link';
+        if (webhook.messageComponents) {
+            webhook.messageComponents.forEach((component) => {
+                this.addComponent();
+                const index = this.messageComponents.length - 1;
+                
+                if (component.type === 'button') {
+                    document.getElementById(`componentType${index}`).value = 'button';
+                    this.updateComponentType(index);
+                    document.getElementById(`componentLabel${index}`).value = component.label || '';
+                    document.getElementById(`componentUrl${index}`).value = component.url || '';
+                    document.getElementById(`componentStyle${index}`).value = component.style || 'link';
+                }
             });
         }
 
@@ -800,34 +834,18 @@ class WebhookManager {
 
     clearEmbedFields() {
         const fieldsContainer = document.getElementById('embedFields');
-        if (fieldsContainer) {
-            fieldsContainer.innerHTML = '';
-        }
+        if (fieldsContainer) fieldsContainer.innerHTML = '';
         this.embedFields = [];
     }
 
-    clearMessageButtons() {
-        const buttonsContainer = document.getElementById('messageButtons');
-        if (buttonsContainer) {
-            buttonsContainer.innerHTML = '';
-        }
-        this.messageButtons = [];
-    }
-
     showEditor() {
-        const welcomeMsg = document.getElementById('welcomeMessage');
-        const editor = document.getElementById('webhookEditor');
-        
-        if (welcomeMsg) welcomeMsg.classList.add('hidden');
-        if (editor) editor.classList.remove('hidden');
+        document.getElementById('welcomeMessage')?.classList.add('hidden');
+        document.getElementById('webhookEditor')?.classList.remove('hidden');
     }
 
     hideEditor() {
-        const welcomeMsg = document.getElementById('welcomeMessage');
-        const editor = document.getElementById('webhookEditor');
-        
-        if (welcomeMsg) welcomeMsg.classList.remove('hidden');
-        if (editor) editor.classList.add('hidden');
+        document.getElementById('welcomeMessage')?.classList.remove('hidden');
+        document.getElementById('webhookEditor')?.classList.add('hidden');
     }
 
     updateActiveItem() {
@@ -852,7 +870,7 @@ class WebhookManager {
         this.currentWebhook.url = url;
         this.currentWebhook.avatar = avatar;
         this.currentWebhook.embedFields = this.embedFields;
-        this.currentWebhook.messageButtons = this.messageButtons;
+        this.currentWebhook.messageComponents = this.messageComponents;
         this.currentWebhook.messageAttachments = this.messageAttachments;
         
         this.currentWebhook.savedContent = {
@@ -891,7 +909,7 @@ class WebhookManager {
             this.currentWebhook.url = url;
             this.currentWebhook.avatar = document.getElementById('avatarUrl')?.value || '';
             this.currentWebhook.embedFields = this.embedFields;
-            this.currentWebhook.messageButtons = this.messageButtons;
+            this.currentWebhook.messageComponents = this.messageComponents;
             this.currentWebhook.messageAttachments = this.messageAttachments;
 
             const messageContent = document.getElementById('messageContent')?.value || '';
@@ -911,7 +929,6 @@ class WebhookManager {
         }
     }
 
-    // FIXED: Send message with proper Discord button format
     async sendMessage() {
         if (!this.currentWebhook || !this.currentWebhook.url) {
             this.showToast('Please save the webhook first', 'error');
@@ -921,15 +938,14 @@ class WebhookManager {
         const messageContent = document.getElementById('messageContent')?.value?.trim();
         const embedData = this.getEmbedData();
 
-        if (!messageContent && !this.hasEmbedContent(embedData) && this.messageButtons.length === 0) {
-            this.showToast('Please enter a message, embed content, or add buttons', 'error');
+        if (!messageContent && !this.hasEmbedContent(embedData) && this.messageComponents.length === 0) {
+            this.showToast('Please enter a message, embed content, or add components', 'error');
             return;
         }
 
-        // Validate buttons
-        const buttonValidation = this.validateButtons();
-        if (!buttonValidation.valid) {
-            this.showToast(`Button error: ${buttonValidation.errors.join(', ')}`, 'error');
+        const validation = this.validateMessage();
+        if (!validation.valid) {
+            this.showToast(`Validation error: ${validation.errors.join(', ')}`, 'error');
             return;
         }
 
@@ -953,7 +969,8 @@ class WebhookManager {
                 },
                 body: JSON.stringify({
                     webhookUrl: this.currentWebhook.url,
-                    payload: payload
+                    payload: payload,
+                    useComponents: this.messageComponents.length > 0
                 })
             });
 
@@ -978,28 +995,53 @@ class WebhookManager {
         }
     }
 
-    validateButtons() {
+    validateMessage() {
+        const messageContent = document.getElementById('messageContent')?.value?.trim() || '';
+        const embedData = this.getEmbedData();
         const errors = [];
-        
-        this.messageButtons.forEach((button, index) => {
-            if (button.label && !button.url) {
-                errors.push(`Button ${index + 1} has label but no URL`);
+
+        if (messageContent.length > 2000) {
+            errors.push('Message content exceeds 2000 characters');
+        }
+
+        if (embedData.title && embedData.title.length > 256) {
+            errors.push('Embed title exceeds 256 characters');
+        }
+        if (embedData.description && embedData.description.length > 4096) {
+            errors.push('Embed description exceeds 4096 characters');
+        }
+
+        if (this.embedFields.length > 25) {
+            errors.push('Embed cannot have more than 25 fields');
+        }
+
+        this.embedFields.forEach((field, index) => {
+            if (field.name.length > 256) {
+                errors.push(`Field ${index + 1} name exceeds 256 characters`);
             }
-            if (button.url && !button.label) {
-                errors.push(`Button ${index + 1} has URL but no label`);
-            }
-            if (button.url && !this.isValidUrl(button.url)) {
-                errors.push(`Button ${index + 1} has invalid URL`);
-            }
-            if (button.label && button.label.length > 80) {
-                errors.push(`Button ${index + 1} label too long (max 80 characters)`);
+            if (field.value.length > 1024) {
+                errors.push(`Field ${index + 1} value exceeds 1024 characters`);
             }
         });
 
-        const validButtons = this.messageButtons.filter(b => b.label && b.url);
-        if (validButtons.length > 5) {
-            errors.push('Maximum 5 buttons allowed per message');
+        const validComponents = this.messageComponents.filter(c => 
+            c.type === 'button' ? (c.label && c.url) : (c.placeholder && c.options?.length > 0)
+        );
+
+        if (validComponents.length > 5) {
+            errors.push('Cannot have more than 5 components per message');
         }
+
+        this.messageComponents.forEach((component, index) => {
+            if (component.type === 'button') {
+                if (component.label && component.label.length > 80) {
+                    errors.push(`Button ${index + 1} label exceeds 80 characters`);
+                }
+                if (component.url && !this.isValidUrl(component.url)) {
+                    errors.push(`Button ${index + 1} has invalid URL`);
+                }
+            }
+        });
 
         return {
             valid: errors.length === 0,
@@ -1007,18 +1049,11 @@ class WebhookManager {
         };
     }
 
-    // FIXED: Build proper Discord webhook payload with working buttons
     buildWebhookPayload(content, embedData) {
         const payload = {};
 
-        if (content) {
-            payload.content = content;
-        }
-
-        if (this.currentWebhook.name) {
-            payload.username = this.currentWebhook.name;
-        }
-
+        if (content) payload.content = content;
+        if (this.currentWebhook.name) payload.username = this.currentWebhook.name;
         if (this.currentWebhook.avatar && this.isValidUrl(this.currentWebhook.avatar)) {
             payload.avatar_url = this.currentWebhook.avatar;
         }
@@ -1028,23 +1063,20 @@ class WebhookManager {
             payload.embeds = [embed];
         }
 
-        // FIXED: Proper Discord button components format
-        const validButtons = this.messageButtons.filter(btn => 
-            btn.label && btn.label.trim() && 
-            btn.url && btn.url.trim() && 
-            this.isValidUrl(btn.url)
+        const validComponents = this.messageComponents.filter(c => 
+            c.type === 'button' && c.label?.trim() && c.url?.trim() && this.isValidUrl(c.url)
         );
         
-        if (validButtons.length > 0) {
-            console.log('Adding buttons to payload:', validButtons);
+        if (validComponents.length > 0) {
+            console.log('Adding components to payload:', validComponents);
             
             payload.components = [{
-                type: 1, // ACTION_ROW
-                components: validButtons.map(btn => ({
-                    type: 2, // BUTTON
-                    style: 5, // LINK - the only style that works with URLs
-                    label: btn.label.trim().substring(0, 80),
-                    url: btn.url.trim()
+                type: 1,
+                components: validComponents.map(c => ({
+                    type: 2,
+                    style: 5,
+                    label: c.label.trim().substring(0, 80),
+                    url: c.url.trim()
                 }))
             }];
         }
@@ -1064,7 +1096,6 @@ class WebhookManager {
             embed.url = embedData.url;
         }
 
-        // Images (only valid URLs)
         if (embedData.image && this.isValidUrl(embedData.image)) {
             embed.image = { url: embedData.image };
         }
@@ -1072,7 +1103,6 @@ class WebhookManager {
             embed.thumbnail = { url: embedData.thumbnail };
         }
 
-        // Author
         if (embedData.authorName) {
             embed.author = { name: embedData.authorName.substring(0, 256) };
             if (embedData.authorUrl && this.isValidUrl(embedData.authorUrl)) {
@@ -1083,7 +1113,6 @@ class WebhookManager {
             }
         }
 
-        // Footer
         if (embedData.footerText) {
             embed.footer = { text: embedData.footerText.substring(0, 2048) };
             if (embedData.footerIcon && this.isValidUrl(embedData.footerIcon)) {
@@ -1091,12 +1120,10 @@ class WebhookManager {
             }
         }
 
-        // Timestamp
         if (embedData.timestamp) {
             embed.timestamp = new Date().toISOString();
         }
 
-        // Fields
         const validFields = this.embedFields.filter(field => field.name && field.value);
         if (validFields.length > 0) {
             embed.fields = validFields.slice(0, 25).map(field => ({
@@ -1132,44 +1159,6 @@ class WebhookManager {
                this.embedFields.some(field => field.name && field.value);
     }
 
-    clearMessageForm() {
-        const inputs = [
-            'messageContent',
-            'embedTitle', 'embedDescription', 'embedUrl', 'embedImage', 'embedThumbnail',
-            'embedAuthorName', 'embedAuthorUrl', 'embedAuthorIcon',
-            'embedFooterText', 'embedFooterIcon'
-        ];
-
-        inputs.forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-                element.value = '';
-            }
-        });
-
-        const colorInput = document.getElementById('embedColor');
-        if (colorInput) {
-            colorInput.value = '#5865F2';
-            const colorPreview = document.querySelector('.color-preview');
-            const colorValue = document.querySelector('.color-hex-input');
-            const colorWheel = document.querySelector('.color-wheel-input');
-            if (colorPreview) colorPreview.style.backgroundColor = '#5865F2';
-            if (colorValue) colorValue.value = '#5865F2';
-            if (colorWheel) colorWheel.value = '#5865F2';
-        }
-
-        const timestampInput = document.getElementById('embedTimestamp');
-        if (timestampInput) {
-            timestampInput.checked = false;
-        }
-
-        this.clearEmbedFields();
-        this.clearMessageButtons();
-        this.clearMessageAttachments();
-
-        this.showToast('Message form cleared', 'info');
-    }
-
     async testWebhookConnection() {
         if (!this.currentWebhook?.url) {
             this.showToast('No webhook URL to test', 'error');
@@ -1195,7 +1184,7 @@ class WebhookManager {
                     description: "This is a test message to verify your webhook configuration.",
                     color: 0x57F287,
                     footer: {
-                        text: "Discord Webhook Manager"
+                        text: "AniHook Manager"
                     },
                     timestamp: new Date().toISOString()
                 }],
@@ -1217,12 +1206,13 @@ class WebhookManager {
                 },
                 body: JSON.stringify({
                     webhookUrl: this.currentWebhook.url,
-                    payload: testPayload
+                    payload: testPayload,
+                    useComponents: true
                 })
             });
 
             if (response.ok) {
-                this.showToast('✅ Webhook connection successful! Check Discord for the test message with button.', 'success');
+                this.showToast('✅ Webhook connection successful! Check Discord for the test message.', 'success');
                 return true;
             } else {
                 const errorData = await response.json();
@@ -1279,12 +1269,9 @@ class WebhookManager {
             url: url,
             avatar: '',
             embedFields: [],
-            messageButtons: [],
+            messageComponents: [],
             messageAttachments: [],
-            savedContent: {
-                message: '',
-                embed: {}
-            }
+            savedContent: { message: '', embed: {} }
         };
 
         try {
@@ -1313,7 +1300,7 @@ class WebhookManager {
         }
     }
 
-    handleAvatarUpload(event) {
+    async handleAvatarUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
 
@@ -1327,7 +1314,8 @@ class WebhookManager {
             return;
         }
 
-        this.convertImageToUrl(file).then(url => {
+        try {
+            const url = await this.uploadImage(file);
             const avatarUrl = document.getElementById('avatarUrl');
             if (avatarUrl) {
                 avatarUrl.value = url;
@@ -1335,10 +1323,10 @@ class WebhookManager {
                 this.updateCurrentWebhook();
                 this.showToast('Avatar uploaded successfully!', 'success');
             }
-        }).catch(error => {
+        } catch (error) {
             console.error('Avatar upload failed:', error);
             this.showToast('Avatar upload failed', 'error');
-        });
+        }
     }
 
     updateAvatarPreview() {
@@ -1401,18 +1389,10 @@ class WebhookManager {
     isValidWebhookUrl(url) {
         try {
             const urlObj = new URL(url);
-            
             const validHosts = ['discord.com', 'discordapp.com'];
-            if (!validHosts.includes(urlObj.hostname)) {
-                return false;
-            }
-            
+            if (!validHosts.includes(urlObj.hostname)) return false;
             const webhookPattern = /\/api\/webhooks\/\d+\/[\w-]+/;
-            if (!webhookPattern.test(urlObj.pathname)) {
-                return false;
-            }
-            
-            return true;
+            return webhookPattern.test(urlObj.pathname);
         } catch {
             return false;
         }
@@ -1488,5 +1468,4 @@ class WebhookManager {
     }
 }
 
-// Global instance
 window.webhookManager = new WebhookManager();

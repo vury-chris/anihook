@@ -24,7 +24,6 @@ class DiscordPreview {
     }
 
     setupEventListeners() {
-        // Listen for input changes
         const inputs = [
             'messageContent',
             'embedTitle', 'embedDescription', 'embedColor', 'embedUrl', 'embedImage', 'embedThumbnail',
@@ -41,7 +40,6 @@ class DiscordPreview {
             }
         });
 
-        // Listen for webhook data changes
         document.addEventListener('webhookSelected', (e) => {
             this.currentWebhook = e.detail;
             this.refreshPreview();
@@ -67,14 +65,14 @@ class DiscordPreview {
 
         const messageContent = document.getElementById('messageContent')?.value || '';
         const embedData = this.getEmbedData();
-        const buttons = this.getMessageButtons();
+        const components = this.getMessageComponents();
         
-        if (!messageContent.trim() && !this.hasEmbedContent(embedData) && buttons.length === 0) {
+        if (!messageContent.trim() && !this.hasEmbedContent(embedData) && components.length === 0) {
             this.showPlaceholder();
             return;
         }
 
-        this.renderMessage(messageContent, embedData, buttons);
+        this.renderMessage(messageContent, embedData, components);
     }
 
     getEmbedData() {
@@ -116,25 +114,55 @@ class DiscordPreview {
         return fields;
     }
 
-    getMessageButtons() {
-        const buttons = [];
-        const buttonElements = document.querySelectorAll('[data-button-index]');
+    getMessageComponents() {
+        const components = [];
+        const componentElements = document.querySelectorAll('.component-builder');
         
-        buttonElements.forEach((element, index) => {
-            const labelInput = document.getElementById(`buttonLabel${index}`);
-            const urlInput = document.getElementById(`buttonUrl${index}`);
-            const styleInput = document.getElementById(`buttonStyle${index}`);
+        componentElements.forEach((element, index) => {
+            const typeSelect = document.getElementById(`componentType${index}`);
+            const type = typeSelect?.value;
             
-            if (labelInput?.value && urlInput?.value) {
-                buttons.push({
-                    label: labelInput.value,
-                    url: urlInput.value,
-                    style: styleInput?.value || 'primary'
-                });
+            if (type === 'button') {
+                const labelInput = document.getElementById(`componentLabel${index}`);
+                const urlInput = document.getElementById(`componentUrl${index}`);
+                const styleInput = document.getElementById(`componentStyle${index}`);
+                
+                if (labelInput?.value && urlInput?.value) {
+                    components.push({
+                        type: 'button',
+                        label: labelInput.value,
+                        url: urlInput.value,
+                        style: styleInput?.value || 'link'
+                    });
+                }
+            } else if (type === 'select') {
+                const placeholderInput = document.getElementById(`componentPlaceholder${index}`);
+                const optionsContainer = document.getElementById(`selectOptions${index}`);
+                
+                if (placeholderInput?.value && optionsContainer) {
+                    const options = [];
+                    optionsContainer.querySelectorAll('.select-option').forEach(option => {
+                        const label = option.querySelector('.option-label')?.value;
+                        const value = option.querySelector('.option-value')?.value;
+                        const description = option.querySelector('.option-description')?.value;
+                        
+                        if (label && value) {
+                            options.push({ label, value, description });
+                        }
+                    });
+                    
+                    if (options.length > 0) {
+                        components.push({
+                            type: 'select',
+                            placeholder: placeholderInput.value,
+                            options: options
+                        });
+                    }
+                }
             }
         });
         
-        return buttons;
+        return components;
     }
 
     hasEmbedContent(embedData) {
@@ -155,7 +183,7 @@ class DiscordPreview {
         }
     }
 
-    renderMessage(content, embedData, buttons) {
+    renderMessage(content, embedData, components) {
         if (!this.previewElement) return;
 
         const webhookName = this.currentWebhook.name || 'Webhook';
@@ -173,7 +201,6 @@ class DiscordPreview {
                     </div>
         `;
 
-        // Add message content if present
         if (content.trim()) {
             const parsedContent = window.discordMarkdown.parse(content, isLight);
             messageHtml += `
@@ -181,14 +208,12 @@ class DiscordPreview {
             `;
         }
 
-        // Add embed if present
         if (this.hasEmbedContent(embedData)) {
             messageHtml += this.renderEmbed(embedData, isLight);
         }
 
-        // Add components (buttons) if present
-        if (buttons.length > 0) {
-            messageHtml += this.renderComponents(buttons, isLight);
+        if (components.length > 0) {
+            messageHtml += this.renderComponents(components, isLight);
         }
 
         messageHtml += `
@@ -198,7 +223,6 @@ class DiscordPreview {
 
         this.previewElement.innerHTML = messageHtml;
         
-        // Add animation class
         const messageElement = this.previewElement.querySelector('.discord-message');
         if (messageElement) {
             messageElement.classList.add('new-message');
@@ -211,19 +235,16 @@ class DiscordPreview {
     renderEmbed(embedData, isLight = false) {
         let embedHtml = `<div class="discord-embed ${isLight ? 'light' : ''}"`;
         
-        // Add color border
         if (embedData.color) {
             embedHtml += ` style="border-left-color: ${embedData.color};"`;
         }
         
         embedHtml += '>';
 
-        // Add thumbnail if present
         if (embedData.thumbnail && this.isValidImageUrl(embedData.thumbnail)) {
             embedHtml += `<img src="${embedData.thumbnail}" alt="Thumbnail" class="discord-embed-thumbnail" onerror="this.style.display='none'">`;
         }
 
-        // Add author if present
         if (embedData.authorName) {
             embedHtml += '<div class="discord-embed-author">';
             if (embedData.authorIcon && this.isValidImageUrl(embedData.authorIcon)) {
@@ -236,7 +257,6 @@ class DiscordPreview {
             embedHtml += '</div>';
         }
 
-        // Add title
         if (embedData.title) {
             const titleContent = embedData.url && this.isValidUrl(embedData.url) 
                 ? `<a href="${embedData.url}" target="_blank" rel="noopener noreferrer">${this.escapeHtml(embedData.title)}</a>`
@@ -245,13 +265,11 @@ class DiscordPreview {
             embedHtml += `<div class="discord-embed-title ${isLight ? 'light' : ''}">${titleContent}</div>`;
         }
 
-        // Add description
         if (embedData.description) {
             const parsedDescription = window.discordMarkdown.parse(embedData.description, isLight);
             embedHtml += `<div class="discord-embed-description ${isLight ? 'light' : ''}">${parsedDescription}</div>`;
         }
 
-        // Add fields
         if (embedData.fields && embedData.fields.length > 0) {
             embedHtml += '<div class="discord-embed-fields">';
             embedData.fields.forEach(field => {
@@ -266,12 +284,10 @@ class DiscordPreview {
             embedHtml += '</div>';
         }
 
-        // Add image
         if (embedData.image && this.isValidImageUrl(embedData.image)) {
             embedHtml += `<img src="${embedData.image}" alt="Embed Image" class="discord-embed-image" onerror="this.style.display='none'">`;
         }
 
-        // Add footer
         if (embedData.footerText || embedData.timestamp) {
             embedHtml += '<div class="discord-embed-footer">';
             
@@ -299,22 +315,44 @@ class DiscordPreview {
         return embedHtml;
     }
 
-    renderComponents(buttons, isLight = false) {
-        if (buttons.length === 0) return '';
+    renderComponents(components, isLight = false) {
+        if (components.length === 0) return '';
         
         let componentsHtml = '<div class="discord-components">';
-        componentsHtml += '<div class="discord-button-row">';
         
-        buttons.forEach(button => {
-            const buttonClass = `discord-button discord-button-${button.style}`;
-            componentsHtml += `
-                <a href="${button.url}" target="_blank" rel="noopener noreferrer" class="${buttonClass}">
-                    ${this.escapeHtml(button.label)}
-                </a>
-            `;
+        components.forEach(component => {
+            if (component.type === 'button') {
+                componentsHtml += '<div class="discord-button-row">';
+                const buttonClass = `discord-button discord-button-${component.style}`;
+                componentsHtml += `
+                    <a href="${component.url}" target="_blank" rel="noopener noreferrer" class="${buttonClass}">
+                        ${this.escapeHtml(component.label)}
+                    </a>
+                `;
+                componentsHtml += '</div>';
+            } else if (component.type === 'select') {
+                componentsHtml += `
+                    <div class="discord-select-menu">
+                        <div class="discord-select-placeholder">${this.escapeHtml(component.placeholder)}</div>
+                        <div class="discord-select-options" style="display: none;">
+                `;
+                
+                component.options.forEach(option => {
+                    componentsHtml += `
+                        <div class="discord-select-option">
+                            <div class="discord-select-option-label">${this.escapeHtml(option.label)}</div>
+                            ${option.description ? `<div class="discord-select-option-description">${this.escapeHtml(option.description)}</div>` : ''}
+                        </div>
+                    `;
+                });
+                
+                componentsHtml += `
+                        </div>
+                    </div>
+                `;
+            }
         });
         
-        componentsHtml += '</div>';
         componentsHtml += '</div>';
         
         return componentsHtml;
@@ -355,7 +393,6 @@ class DiscordPreview {
     isValidImageUrl(url) {
         if (!this.isValidUrl(url)) return false;
         
-        // Basic image URL validation
         const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp'];
         const lowercaseUrl = url.toLowerCase();
         
@@ -373,12 +410,10 @@ class DiscordPreview {
         return div.innerHTML;
     }
 
-    // Preview a specific webhook configuration
-    previewWebhook(webhook, content = '', embedData = null, buttons = []) {
+    previewWebhook(webhook, content = '', embedData = null, components = []) {
         this.currentWebhook = webhook;
         
-        if (content || embedData || buttons.length > 0) {
-            // Temporarily set form values for preview
+        if (content || embedData || components.length > 0) {
             const messageContent = document.getElementById('messageContent');
             if (messageContent && content) {
                 messageContent.value = content;
@@ -388,8 +423,8 @@ class DiscordPreview {
                 this.setEmbedFormData(embedData);
             }
 
-            if (buttons.length > 0) {
-                this.setButtonFormData(buttons);
+            if (components.length > 0) {
+                this.setComponentFormData(components);
             }
         }
         
@@ -417,34 +452,35 @@ class DiscordPreview {
         }
     }
 
-    setButtonFormData(buttons) {
-        // Clear existing buttons first
-        const buttonsContainer = document.getElementById('messageButtons');
-        if (buttonsContainer) {
-            buttonsContainer.innerHTML = '';
+    setComponentFormData(components) {
+        const container = document.getElementById('messageComponents');
+        if (container) {
+            container.innerHTML = '';
         }
 
-        // Add buttons
-        buttons.forEach((button, index) => {
+        components.forEach((component) => {
             if (window.webhookManager) {
-                window.webhookManager.addMessageButton();
-                document.getElementById(`buttonLabel${index}`).value = button.label || '';
-                document.getElementById(`buttonUrl${index}`).value = button.url || '';
-                document.getElementById(`buttonStyle${index}`).value = button.style || 'primary';
+                window.webhookManager.addComponent();
+                const index = window.webhookManager.messageComponents.length - 1;
+                
+                if (component.type === 'button') {
+                    document.getElementById(`componentType${index}`).value = 'button';
+                    window.webhookManager.updateComponentType(index);
+                    document.getElementById(`componentLabel${index}`).value = component.label || '';
+                    document.getElementById(`componentUrl${index}`).value = component.url || '';
+                    document.getElementById(`componentStyle${index}`).value = component.style || 'link';
+                }
             }
         });
     }
 
-    // Clear preview
     clear() {
         this.currentWebhook = null;
         this.showPlaceholder();
     }
 
-    // Export current preview as image (future enhancement)
     async exportAsImage() {
         try {
-            // This would require html2canvas or similar library
             if (typeof html2canvas !== 'undefined') {
                 const canvas = await html2canvas(this.previewElement);
                 const link = document.createElement('a');
@@ -461,37 +497,33 @@ class DiscordPreview {
         }
     }
 
-    // Get preview statistics
     getPreviewStats() {
         if (!this.currentWebhook) return null;
 
         const messageContent = document.getElementById('messageContent')?.value || '';
         const embedData = this.getEmbedData();
-        const buttons = this.getMessageButtons();
+        const components = this.getMessageComponents();
 
         return {
             webhook: this.currentWebhook.name,
             messageLength: messageContent.length,
             hasEmbed: this.hasEmbedContent(embedData),
             embedFieldCount: embedData.fields.length,
-            buttonCount: buttons.length,
+            componentCount: components.length,
             theme: this.currentTheme
         };
     }
 
-    // Validate message before sending
     validateMessage() {
         const messageContent = document.getElementById('messageContent')?.value?.trim() || '';
         const embedData = this.getEmbedData();
-        const buttons = this.getMessageButtons();
+        const components = this.getMessageComponents();
         const errors = [];
 
-        // Check message content length
         if (messageContent.length > 2000) {
             errors.push('Message content exceeds 2000 characters');
         }
 
-        // Check embed limits
         if (embedData.title && embedData.title.length > 256) {
             errors.push('Embed title exceeds 256 characters');
         }
@@ -502,7 +534,6 @@ class DiscordPreview {
             errors.push('Embed footer text exceeds 2048 characters');
         }
 
-        // Check field limits
         if (embedData.fields.length > 25) {
             errors.push('Embed cannot have more than 25 fields');
         }
@@ -516,17 +547,22 @@ class DiscordPreview {
             }
         });
 
-        // Check button limits
-        if (buttons.length > 5) {
-            errors.push('Cannot have more than 5 buttons per message');
+        if (components.length > 5) {
+            errors.push('Cannot have more than 5 components per message');
         }
 
-        buttons.forEach((button, index) => {
-            if (button.label.length > 80) {
-                errors.push(`Button ${index + 1} label exceeds 80 characters`);
-            }
-            if (button.url && !this.isValidUrl(button.url)) {
-                errors.push(`Button ${index + 1} has invalid URL`);
+        components.forEach((component, index) => {
+            if (component.type === 'button') {
+                if (component.label.length > 80) {
+                    errors.push(`Button ${index + 1} label exceeds 80 characters`);
+                }
+                if (component.url && !this.isValidUrl(component.url)) {
+                    errors.push(`Button ${index + 1} has invalid URL`);
+                }
+            } else if (component.type === 'select') {
+                if (component.options.length > 25) {
+                    errors.push(`Select menu ${index + 1} cannot have more than 25 options`);
+                }
             }
         });
 
@@ -537,10 +573,8 @@ class DiscordPreview {
     }
 }
 
-// Global instance
 window.discordPreview = new DiscordPreview();
 
-// Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.discordPreview.init();
 });
