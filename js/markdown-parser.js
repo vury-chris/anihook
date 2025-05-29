@@ -1,16 +1,16 @@
 class DiscordMarkdownParser {
     constructor() {
         this.patterns = {
-            // Bold: **text** or __text__
-            bold: /\*\*(.*?)\*\*|__(.*?)__/g,
-            // Italic: *text* or _text_
-            italic: /(?<!\*)\*([^*]+?)\*(?!\*)|(?<!_)_([^_]+?)_(?!_)/g,
-            // Underline: __text__ (when not bold)
+            // Bold: **text**
+            bold: /\*\*(.*?)\*\*/g,
+            // Italic: *text*
+            italic: /(?<!\*)\*([^*\n]+?)\*(?!\*)/g,
+            // Underline: __text__
             underline: /__(.*?)__/g,
             // Strikethrough: ~~text~~
             strikethrough: /~~(.*?)~~/g,
             // Inline code: `code`
-            inlineCode: /`([^`]+?)`/g,
+            inlineCode: /`([^`\n]+?)`/g,
             // Code block: ```code```
             codeBlock: /```([\s\S]*?)```/g,
             // Links: [text](url)
@@ -32,8 +32,9 @@ class DiscordMarkdownParser {
         parsed = this.parseInlineCode(parsed);
         parsed = this.parseSpoilers(parsed);
         parsed = this.parseLinks(parsed);
-        parsed = this.parseFormatting(parsed, isLight);
+        parsed = this.parseFormatting(parsed);
         parsed = this.parseQuotes(parsed, isLight);
+        parsed = this.preserveLineBreaks(parsed);
         
         return parsed;
     }
@@ -47,19 +48,19 @@ class DiscordMarkdownParser {
     parseCodeBlocks(text) {
         return text.replace(this.patterns.codeBlock, (match, code) => {
             const trimmedCode = code.trim();
-            return `<pre class="discord-code-block"><code>${this.escapeHtml(trimmedCode)}</code></pre>`;
+            return `<div class="discord-code-block"><code>${this.escapeHtml(trimmedCode)}</code></div>`;
         });
     }
 
     parseInlineCode(text) {
         return text.replace(this.patterns.inlineCode, (match, code) => {
-            return `<code class="discord-code-inline">${this.escapeHtml(code)}</code>`;
+            return `<span class="discord-code-inline">${this.escapeHtml(code)}</span>`;
         });
     }
 
     parseSpoilers(text) {
         return text.replace(this.patterns.spoiler, (match, content) => {
-            return `<span class="discord-spoiler" onclick="this.classList.toggle('revealed')">${content}</span>`;
+            return `<span class="discord-spoiler" onclick="this.classList.toggle('revealed')" title="Click to reveal spoiler">${content}</span>`;
         });
     }
 
@@ -73,25 +74,25 @@ class DiscordMarkdownParser {
         });
     }
 
-    parseFormatting(text, isLight = false) {
+    parseFormatting(text) {
         // Parse strikethrough first
         text = text.replace(this.patterns.strikethrough, (match, content) => {
             return `<span class="discord-strikethrough">${content}</span>`;
         });
 
-        // Parse bold (both ** and __ variants)
-        text = text.replace(/\*\*(.*?)\*\*/g, (match, content) => {
+        // Parse bold (** variant)
+        text = text.replace(this.patterns.bold, (match, content) => {
             return `<strong class="discord-bold">${content}</strong>`;
         });
 
-        // Parse italic (but not when it's part of bold/underline)
-        text = text.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, (match, content) => {
-            return `<em class="discord-italic">${content}</em>`;
-        });
-
-        // Parse underline (__ when not used for bold)
+        // Parse underline (__ variant, but not when used for bold)
         text = text.replace(/(?<!\*)__(.*?)__(?!\*)/g, (match, content) => {
             return `<u class="discord-underline">${content}</u>`;
+        });
+
+        // Parse italic (* variant, but not when part of bold)
+        text = text.replace(this.patterns.italic, (match, content) => {
+            return `<em class="discord-italic">${content}</em>`;
         });
 
         return text;
@@ -127,7 +128,7 @@ class DiscordMarkdownParser {
             result.push(`<div class="discord-quote${isLight ? ' light' : ''}">${quoteContent.join('<br>')}</div>`);
         }
 
-        return result.join('<br>');
+        return result.join('\n');
     }
 
     isValidUrl(string) {
@@ -139,7 +140,12 @@ class DiscordMarkdownParser {
         }
     }
 
-    // Parse mentions (for future enhancement)
+    // Helper method to preserve line breaks
+    preserveLineBreaks(text) {
+        return text.replace(/\n/g, '<br>');
+    }
+
+    // Parse Discord-style mentions (for future enhancement)
     parseMentions(text) {
         return text
             .replace(/<@!?(\d+)>/g, '<span class="discord-mention">@User</span>')
@@ -150,15 +156,8 @@ class DiscordMarkdownParser {
     // Parse custom emojis (for future enhancement)
     parseEmojis(text) {
         return text.replace(/<a?:(\w+):(\d+)>/g, (match, name, id) => {
-            return `<img src="https://cdn.discordapp.com/emojis/${id}.png" alt=":${name}:" class="discord-emoji">`;
-        });
-    }
-
-    // Parse timestamps (for future enhancement)
-    parseTimestamps(text) {
-        return text.replace(/<t:(\d+)(?::([tTdDfFR]))?>/g, (match, timestamp, format) => {
-            const date = new Date(parseInt(timestamp) * 1000);
-            return `<span class="discord-timestamp">${date.toLocaleString()}</span>`;
+            const extension = match.startsWith('<a:') ? 'gif' : 'png';
+            return `<img src="https://cdn.discordapp.com/emojis/${id}.${extension}" alt=":${name}:" class="discord-emoji" style="width: 22px; height: 22px; vertical-align: -4px;">`;
         });
     }
 
@@ -173,18 +172,13 @@ class DiscordMarkdownParser {
         parsed = this.parseInlineCode(parsed);
         parsed = this.parseSpoilers(parsed);
         parsed = this.parseLinks(parsed);
-        parsed = this.parseFormatting(parsed, isLight);
+        parsed = this.parseFormatting(parsed);
         parsed = this.parseQuotes(parsed, isLight);
         parsed = this.parseMentions(parsed);
         parsed = this.parseEmojis(parsed);
-        parsed = this.parseTimestamps(parsed);
+        parsed = this.preserveLineBreaks(parsed);
         
         return parsed;
-    }
-
-    // Helper method to preserve line breaks
-    preserveLineBreaks(text) {
-        return text.replace(/\n/g, '<br>');
     }
 }
 

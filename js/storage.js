@@ -3,18 +3,13 @@ class StorageManager {
         this.STORAGE_KEYS = {
             WEBHOOKS: 'discord_webhooks',
             CURRENT_WEBHOOK: 'current_webhook',
-            USER_SETTINGS: 'user_settings',
-            DRAFT_MESSAGE: 'draft_message'
+            USER_SETTINGS: 'user_settings'
         };
         this.init();
     }
 
     init() {
-        // Initialize storage structure if needed
         this.ensureStorageStructure();
-        
-        // Set up auto-save for drafts
-        this.setupAutoSave();
     }
 
     ensureStorageStructure() {
@@ -25,8 +20,7 @@ class StorageManager {
         if (!this.getUserSettings()) {
             this.setItem(this.STORAGE_KEYS.USER_SETTINGS, {
                 theme: 'dark',
-                autoSave: true,
-                notifications: true
+                autoSave: true
             });
         }
     }
@@ -34,30 +28,31 @@ class StorageManager {
     // Generic storage methods
     setItem(key, value) {
         try {
-            localStorage.setItem(key, JSON.stringify(value));
+            const item = JSON.stringify(value);
+            sessionStorage.setItem(key, item);
             return true;
         } catch (error) {
-            console.error('Error saving to localStorage:', error);
+            console.error('Error saving to storage:', error);
             return false;
         }
     }
 
     getItem(key) {
         try {
-            const item = localStorage.getItem(key);
+            const item = sessionStorage.getItem(key);
             return item ? JSON.parse(item) : null;
         } catch (error) {
-            console.error('Error reading from localStorage:', error);
+            console.error('Error reading from storage:', error);
             return null;
         }
     }
 
     removeItem(key) {
         try {
-            localStorage.removeItem(key);
+            sessionStorage.removeItem(key);
             return true;
         } catch (error) {
-            console.error('Error removing from localStorage:', error);
+            console.error('Error removing from storage:', error);
             return false;
         }
     }
@@ -72,14 +67,14 @@ class StorageManager {
         const existingIndex = webhooks.findIndex(w => w.id === webhook.id);
         
         if (existingIndex !== -1) {
-            webhooks[existingIndex] = webhook;
+            webhooks[existingIndex] = { ...webhook, updatedAt: Date.now() };
         } else {
             webhook.id = this.generateId();
             webhook.createdAt = Date.now();
+            webhook.updatedAt = Date.now();
             webhooks.push(webhook);
         }
         
-        webhook.updatedAt = Date.now();
         this.setItem(this.STORAGE_KEYS.WEBHOOKS, webhooks);
         
         // Dispatch event for UI updates
@@ -136,85 +131,13 @@ class StorageManager {
         return updatedSettings;
     }
 
-    // Draft management
-    saveDraft(content) {
-        const draft = {
-            content: content,
-            timestamp: Date.now()
-        };
-        this.setItem(this.STORAGE_KEYS.DRAFT_MESSAGE, draft);
-    }
-
-    getDraft() {
-        const draft = this.getItem(this.STORAGE_KEYS.DRAFT_MESSAGE);
-        
-        // Only return draft if it's less than 24 hours old
-        if (draft && Date.now() - draft.timestamp < 86400000) {
-            return draft.content;
-        }
-        
-        return null;
-    }
-
-    clearDraft() {
-        this.removeItem(this.STORAGE_KEYS.DRAFT_MESSAGE);
-    }
-
-    // Auto-save functionality
-    setupAutoSave() {
-        let saveTimeout;
-        
-        const autoSave = () => {
-            clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(() => {
-                const messageContent = document.getElementById('messageContent');
-                if (messageContent && messageContent.value.trim()) {
-                    this.saveDraft({
-                        message: messageContent.value,
-                        embed: this.getCurrentEmbedData()
-                    });
-                }
-            }, 2000); // Save after 2 seconds of inactivity
-        };
-
-        // Set up auto-save listeners when DOM is ready
-        document.addEventListener('DOMContentLoaded', () => {
-            const messageContent = document.getElementById('messageContent');
-            if (messageContent) {
-                messageContent.addEventListener('input', autoSave);
-            }
-        });
-    }
-
-    getCurrentEmbedData() {
-        const embedElements = [
-            'embedTitle',
-            'embedDescription',
-            'embedColor',
-            'embedUrl',
-            'embedImage',
-            'embedThumbnail'
-        ];
-
-        const embedData = {};
-        embedElements.forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-                const key = id.replace('embed', '').toLowerCase();
-                embedData[key] = element.value;
-            }
-        });
-
-        return embedData;
-    }
-
     // Import/Export functionality
     exportWebhooks() {
         const webhooks = this.getWebhooks();
         const exportData = {
             webhooks: webhooks,
             exportDate: new Date().toISOString(),
-            version: '1.0'
+            version: '2.0'
         };
         
         return JSON.stringify(exportData, null, 2);
@@ -258,15 +181,6 @@ class StorageManager {
         document.dispatchEvent(event);
     }
 
-    // Data cleanup and maintenance
-    cleanup() {
-        // Remove old drafts
-        const draft = this.getItem(this.STORAGE_KEYS.DRAFT_MESSAGE);
-        if (draft && Date.now() - draft.timestamp > 86400000) {
-            this.clearDraft();
-        }
-    }
-
     // Get storage usage statistics
     getStorageStats() {
         const webhooks = this.getWebhooks();
@@ -304,8 +218,3 @@ class StorageManager {
 
 // Global instance
 window.storageManager = new StorageManager();
-
-// Initialize cleanup on page load
-document.addEventListener('DOMContentLoaded', () => {
-    window.storageManager.cleanup();
-});
