@@ -17,6 +17,7 @@ class WebhookManager {
             this.setupModalListeners();
             this.setupTabListeners();
             this.setupColorPicker();
+            this.setupImageUploads();
         });
 
         // Storage events
@@ -51,7 +52,7 @@ class WebhookManager {
         });
 
         // Form inputs - update current webhook on change
-        ['webhookName', 'webhookUrl', 'webhookAvatar'].forEach(id => {
+        ['webhookName', 'webhookUrl', 'avatarUrl'].forEach(id => {
             const element = document.getElementById(id);
             if (element) {
                 element.addEventListener('input', () => this.updateCurrentWebhook());
@@ -64,79 +65,229 @@ class WebhookManager {
             addFieldBtn.addEventListener('click', () => this.addEmbedField());
         }
 
-        // Image upload buttons
-        this.setupImageUploads();
+        // Clear avatar button
+        const clearAvatarBtn = document.getElementById('clearAvatarBtn');
+        if (clearAvatarBtn) {
+            clearAvatarBtn.addEventListener('click', () => {
+                const avatarUrl = document.getElementById('avatarUrl');
+                const avatarPreview = document.getElementById('avatarPreview');
+                if (avatarUrl) avatarUrl.value = '';
+                if (avatarPreview) avatarPreview.src = 'assets/default-avatar.png';
+                this.updateCurrentWebhook();
+            });
+        }
     }
 
     setupImageUploads() {
-        const imageUploads = [
-            { btnId: 'messageImageUploadBtn', fileId: 'messageImageFile', targetId: 'messageImage' },
-            { btnId: 'embedImageUploadBtn', fileId: 'embedImageFile', targetId: 'embedImage' },
-            { btnId: 'embedThumbnailUploadBtn', fileId: 'embedThumbnailFile', targetId: 'embedThumbnail' },
-            { btnId: 'embedAuthorIconUploadBtn', fileId: 'embedAuthorIconFile', targetId: 'embedAuthorIcon' },
-            { btnId: 'embedFooterIconUploadBtn', fileId: 'embedFooterIconFile', targetId: 'embedFooterIcon' },
-            { btnId: 'webhookAvatarUploadBtn', fileId: 'webhookAvatarFile', targetId: 'webhookAvatar' }
+        console.log('🔧 Setting up image uploads...');
+        
+        // Upload button configurations
+        const uploadConfigs = [
+            { 
+                buttonId: 'messageImageBtn', 
+                fileId: 'messageImageFile', 
+                targetId: 'messageContent',
+                isMessageImage: true
+            },
+            { 
+                buttonId: 'embedImageBtn', 
+                fileId: 'embedImageFile', 
+                targetId: 'embedImage' 
+            },
+            { 
+                buttonId: 'embedThumbnailBtn', 
+                fileId: 'embedThumbnailFile', 
+                targetId: 'embedThumbnail' 
+            },
+            { 
+                buttonId: 'uploadAvatarBtn', 
+                fileId: 'avatarFile', 
+                targetId: 'avatarUrl' 
+            }
         ];
 
-        imageUploads.forEach(({ btnId, fileId, targetId }) => {
-            const button = document.getElementById(btnId);
-            const fileInput = document.getElementById(fileId);
-            const targetInput = document.getElementById(targetId);
-
-            if (button && fileInput && targetInput) {
-                button.addEventListener('click', () => {
-                    fileInput.click();
-                });
-
-                fileInput.addEventListener('change', (e) => {
-                    this.handleImageUpload(e, targetInput, button);
-                });
-            }
+        uploadConfigs.forEach(config => {
+            this.setupSingleUpload(config);
         });
+
+        // Also setup the embed field upload buttons that use classes
+        this.setupEmbedFieldUploads();
     }
 
-    async handleImageUpload(event, targetInput, uploadButton) {
-        const file = event.target.files[0];
-        if (!file) return;
+    setupSingleUpload(config) {
+        const button = document.getElementById(config.buttonId);
+        const fileInput = document.getElementById(config.fileId);
 
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
-            this.showToast('Please select an image file', 'error');
+        console.log(`🔧 Setting up ${config.buttonId}:`, { 
+            button: !!button, 
+            fileInput: !!fileInput 
+        });
+
+        if (!button || !fileInput) {
+            console.warn(`❌ Missing elements for ${config.buttonId}`);
             return;
         }
 
-        try {
-            // Show uploading state
-            uploadButton.classList.add('uploading');
+        // Button click handler
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log(`📸 Upload button clicked: ${config.buttonId}`);
+            fileInput.click();
+        });
 
-            // Convert to data URL
-            const dataUrl = await this.fileToDataUrl(file);
-            
-            // Set the data URL in the target input
-            targetInput.value = dataUrl;
-            
-            // Trigger update events
-            targetInput.dispatchEvent(new Event('input'));
-            this.updateCurrentWebhook();
+        // File input change handler
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
 
-            this.showToast('Image uploaded successfully!', 'success');
+            console.log(`📁 File selected for ${config.buttonId}:`, file.name);
 
-        } catch (error) {
-            console.error('Image upload error:', error);
-            this.showToast('Failed to upload image', 'error');
-        } finally {
-            // Reset button state
-            uploadButton.classList.remove('uploading');
-            
-            // Clear file input
-            event.target.value = '';
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                this.showToast('Please select an image file', 'error');
+                return;
+            }
+
+            // Validate file size (max 8MB)
+            if (file.size > 8 * 1024 * 1024) {
+                this.showToast('Image must be smaller than 8MB', 'error');
+                return;
+            }
+
+            try {
+                // Show loading state
+                button.disabled = true;
+                button.textContent = 'Uploading...';
+
+                // Convert to data URL
+                const dataUrl = await this.fileToDataUrl(file);
+                
+                // Handle different upload types
+                if (config.isMessageImage) {
+                    // For message image, append to content
+                    const messageContent = document.getElementById('messageContent');
+                    if (messageContent) {
+                        const currentContent = messageContent.value;
+                        const newContent = currentContent + (currentContent ? '\n' : '') + dataUrl;
+                        messageContent.value = newContent;
+                        messageContent.dispatchEvent(new Event('input'));
+                    }
+                } else {
+                    // For other images, set the URL directly
+                    const targetInput = document.getElementById(config.targetId);
+                    if (targetInput) {
+                        targetInput.value = dataUrl;
+                        targetInput.dispatchEvent(new Event('input'));
+                        
+                        // Update avatar preview if it's an avatar upload
+                        if (config.targetId === 'avatarUrl') {
+                            const avatarPreview = document.getElementById('avatarPreview');
+                            if (avatarPreview) {
+                                avatarPreview.src = dataUrl;
+                            }
+                        }
+                    }
+                }
+
+                this.updateCurrentWebhook();
+                this.showToast('Image uploaded successfully!', 'success');
+
+            } catch (error) {
+                console.error('❌ Image upload error:', error);
+                this.showToast('Failed to upload image: ' + error.message, 'error');
+            } finally {
+                // Reset button state
+                button.disabled = false;
+                button.textContent = button.dataset.originalText || '📷 Upload';
+                
+                // Clear file input
+                fileInput.value = '';
+            }
+        });
+
+        // Store original button text for reset
+        if (!button.dataset.originalText) {
+            button.dataset.originalText = button.textContent;
         }
+    }
+
+    setupEmbedFieldUploads() {
+        // Setup upload buttons that use classes (for embed fields)
+        document.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('upload-btn') && e.target.textContent.includes('📷')) {
+                e.preventDefault();
+                
+                // Find the associated file input and target input
+                const section = e.target.closest('.embed-section');
+                if (!section) return;
+
+                const targetInput = section.querySelector('input[type="url"]');
+                if (!targetInput) return;
+
+                // Create a temporary file input
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.accept = 'image/*';
+                fileInput.style.display = 'none';
+                document.body.appendChild(fileInput);
+
+                fileInput.addEventListener('change', async (event) => {
+                    const file = event.target.files[0];
+                    if (!file) {
+                        document.body.removeChild(fileInput);
+                        return;
+                    }
+
+                    if (!file.type.startsWith('image/')) {
+                        this.showToast('Please select an image file', 'error');
+                        document.body.removeChild(fileInput);
+                        return;
+                    }
+
+                    if (file.size > 8 * 1024 * 1024) {
+                        this.showToast('Image must be smaller than 8MB', 'error');
+                        document.body.removeChild(fileInput);
+                        return;
+                    }
+
+                    try {
+                        e.target.disabled = true;
+                        e.target.textContent = 'Uploading...';
+
+                        const dataUrl = await this.fileToDataUrl(file);
+                        targetInput.value = dataUrl;
+                        targetInput.dispatchEvent(new Event('input'));
+                        
+                        this.updateCurrentWebhook();
+                        this.showToast('Image uploaded successfully!', 'success');
+
+                    } catch (error) {
+                        console.error('❌ Image upload error:', error);
+                        this.showToast('Failed to upload image: ' + error.message, 'error');
+                    } finally {
+                        e.target.disabled = false;
+                        e.target.textContent = '📷 Upload';
+                        document.body.removeChild(fileInput);
+                    }
+                });
+
+                fileInput.click();
+            }
+        });
     }
 
     fileToDataUrl(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
+            reader.onload = (e) => {
+                try {
+                    const result = e.target.result;
+                    console.log(`✅ File converted to data URL: ${file.name} (${result.length} chars)`);
+                    resolve(result);
+                } catch (error) {
+                    reject(error);
+                }
+            };
             reader.onerror = (e) => reject(new Error('Failed to read file'));
             reader.readAsDataURL(file);
         });
@@ -275,7 +426,7 @@ class WebhookManager {
         const fields = {
             'webhookName': webhook.name || '',
             'webhookUrl': webhook.url || '',
-            'webhookAvatar': webhook.avatar || ''
+            'avatarUrl': webhook.avatar || ''
         };
 
         Object.entries(fields).forEach(([id, value]) => {
@@ -283,16 +434,17 @@ class WebhookManager {
             if (element) element.value = value;
         });
 
+        // Update avatar preview
+        const avatarPreview = document.getElementById('avatarPreview');
+        if (avatarPreview) {
+            avatarPreview.src = webhook.avatar || 'assets/default-avatar.png';
+        }
+
         // Load saved content if available
         if (webhook.savedContent) {
             const messageContent = document.getElementById('messageContent');
             if (messageContent && webhook.savedContent.message) {
                 messageContent.value = webhook.savedContent.message;
-            }
-
-            const messageImage = document.getElementById('messageImage');
-            if (messageImage && webhook.savedContent.image) {
-                messageImage.value = webhook.savedContent.image;
             }
 
             // Load embed data
@@ -358,7 +510,7 @@ class WebhookManager {
 
         const name = document.getElementById('webhookName')?.value || '';
         const url = document.getElementById('webhookUrl')?.value || '';
-        const avatar = document.getElementById('webhookAvatar')?.value || '';
+        const avatar = document.getElementById('avatarUrl')?.value || '';
 
         this.currentWebhook.name = name;
         this.currentWebhook.url = url;
@@ -367,7 +519,6 @@ class WebhookManager {
         // Save current content
         this.currentWebhook.savedContent = {
             message: document.getElementById('messageContent')?.value || '',
-            image: document.getElementById('messageImage')?.value || '',
             embed: this.getEmbedData()
         };
 
@@ -397,7 +548,7 @@ class WebhookManager {
 
     // Embed Fields Management
     addEmbedField(fieldData = null) {
-        const fieldsContainer = document.getElementById('embedFieldsList');
+        const fieldsContainer = document.getElementById('embedFields');
         if (!fieldsContainer) return;
 
         const fieldIndex = this.embedFields.length;
@@ -489,7 +640,7 @@ class WebhookManager {
     }
 
     clearEmbedFields() {
-        const fieldsContainer = document.getElementById('embedFieldsList');
+        const fieldsContainer = document.getElementById('embedFields');
         if (fieldsContainer) {
             fieldsContainer.innerHTML = '';
         }
@@ -609,11 +760,10 @@ class WebhookManager {
         }
 
         const messageContent = document.getElementById('messageContent')?.value?.trim();
-        const messageImage = document.getElementById('messageImage')?.value?.trim();
         const embedData = this.getEmbedData();
 
-        if (!messageContent && !messageImage && !this.hasEmbedContent(embedData)) {
-            this.showToast('Please enter a message, image, or embed content', 'error');
+        if (!messageContent && !this.hasEmbedContent(embedData)) {
+            this.showToast('Please enter a message or embed content', 'error');
             return;
         }
 
@@ -631,7 +781,7 @@ class WebhookManager {
                 sendBtn.textContent = 'Sending...';
             }
 
-            const payload = this.buildWebhookPayload(messageContent, messageImage, embedData);
+            const payload = this.buildWebhookPayload(messageContent, embedData);
             
             const response = await fetch('/api/webhook', {
                 method: 'POST',
@@ -663,7 +813,7 @@ class WebhookManager {
         }
     }
 
-    buildWebhookPayload(content, imageUrl, embedData) {
+    buildWebhookPayload(content, embedData) {
         const payload = {};
 
         // Set webhook name and avatar
@@ -672,18 +822,9 @@ class WebhookManager {
             payload.avatar_url = this.currentWebhook.avatar;
         }
 
-        // Handle message content and image
-        let messageText = content || '';
-        if (imageUrl && this.isValidUrl(imageUrl)) {
-            if (messageText) {
-                messageText += '\n' + imageUrl;
-            } else {
-                messageText = imageUrl;
-            }
-        }
-
-        if (messageText) {
-            payload.content = messageText;
+        // Handle message content
+        if (content) {
+            payload.content = content;
         }
 
         // Only add embed if there's actual embed content
@@ -787,7 +928,7 @@ class WebhookManager {
             url: url,
             avatar: '',
             embedFields: [],
-            savedContent: { message: '', image: '', embed: {} }
+            savedContent: { message: '', embed: {} }
         };
 
         try {
@@ -907,6 +1048,13 @@ class WebhookManager {
 
     getCurrentWebhook() {
         return this.currentWebhook;
+    }
+
+    clearWebhooks() {
+        this.webhooks = [];
+        this.currentWebhook = null;
+        this.renderWebhookList();
+        this.hideEditor();
     }
 }
 
